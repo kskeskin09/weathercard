@@ -1,4 +1,4 @@
-name: Android build and tests
+name: Android build and nightly
 on:
   push:
     branches: [main]
@@ -6,10 +6,15 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -21,20 +26,79 @@ jobs:
           packages: 'platform-tools platforms;android-35 build-tools;35.0.0'
           log-accepted-android-sdk-licenses: false
       - uses: gradle/actions/setup-gradle@v4
-      - name: Make wrapper executable
-        run: chmod +x gradlew
-      - name: Test, lint and build debug APK
-        run: ./gradlew :core:test :app:testDebugUnitTest :app:lintDebug :app:assembleDebug --stacktrace
+      - name: Set application version
+        id: version
+        shell: bash
+        run: |
+          BASE_VERSION=$(sed -n 's/^weatherVersionName=//p' gradle.properties | tr -d '\r')
+          VERSION_NAME="${BASE_VERSION}-nightly.$(date -u +%Y%m%d).${GITHUB_RUN_NUMBER}"
+          VERSION_CODE=$((100000 + GITHUB_RUN_NUMBER))
+          echo "name=$VERSION_NAME" >> "$GITHUB_OUTPUT"
+          echo "code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
+      - name: Prepare signing key
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          SIGNING_PASSWORD: ${{ secrets.ANDROID_SIGNING_PASSWORD }}
+        shell: bash
+        run: |
+          test -n "$KEYSTORE_BASE64" && test -n "$SIGNING_PASSWORD"
+          umask 077
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/weathercard-nightly.jks"
+      - name: Test, lint and build APK
+        env:
+          WEATHERCARD_KEYSTORE: ${{ github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && format('{0}/weathercard-nightly.jks', runner.temp) || '' }}
+          WEATHERCARD_SIGNING_PASSWORD: ${{ secrets.ANDROID_SIGNING_PASSWORD }}
+          VERSION_NAME: ${{ steps.version.outputs.name }}
+          VERSION_CODE: ${{ steps.version.outputs.code }}
+        run: |
+          chmod +x gradlew
+          ./gradlew :core:test :app:testDebugUnitTest :app:lintDebug :app:assembleRelease -PweatherVersionName="$VERSION_NAME" -PweatherVersionCode="$VERSION_CODE" --stacktrace
+      - name: Verify APK signature and prepare download
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        run: |
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose app/build/outputs/apk/release/app-release.apk
+          mkdir -p dist
+          cp app/build/outputs/apk/release/app-release.apk dist/weathercard-nightly.apk
+          cd dist
+          sha256sum weathercard-nightly.apk > weathercard-nightly.apk.sha256
+      - name: Update the single nightly release
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION_NAME: ${{ steps.version.outputs.name }}
+          VERSION_CODE: ${{ steps.version.outputs.code }}
+        shell: bash
+        run: |
+          cat > "$RUNNER_TEMP/nightly-notes.md" <<EOF
+          Android telefonundan **weathercard-nightly.apk** dosyasını indirip aç.
+
+          - Sürüm: **$VERSION_NAME** (kod: $VERSION_CODE)
+          - Android 8.0 ve üzeri
+          - Commit: $GITHUB_SHA
+          - Sabit imzalama anahtarıyla üretilir; önceki nightly sürümünün üzerine kurulabilir.
+          - Bu tek nightly ön sürümü her başarılı main derlemesinde güncellenir.
+          - Repo private: indirmek için bu repoya erişimi olan GitHub hesabınla giriş yapmalısın.
+
+          Kontroller: birim testleri, Android lint, release derlemesi ve APK imza doğrulaması.
+          EOF
+          if gh release view nightly --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            gh release upload nightly dist/weathercard-nightly.apk dist/weathercard-nightly.apk.sha256 --clobber --repo "$GITHUB_REPOSITORY"
+            gh api --method PATCH "repos/$GITHUB_REPOSITORY/git/refs/tags/nightly" -f sha="$GITHUB_SHA" -F force=true
+            gh release edit nightly --title "WeatherCard Nightly" --notes-file "$RUNNER_TEMP/nightly-notes.md" --prerelease --repo "$GITHUB_REPOSITORY"
+          else
+            gh release create nightly dist/weathercard-nightly.apk dist/weathercard-nightly.apk.sha256 --target "$GITHUB_SHA" --title "WeatherCard Nightly" --notes-file "$RUNNER_TEMP/nightly-notes.md" --prerelease --repo "$GITHUB_REPOSITORY"
+          fi
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: test-reports
+          retention-days: 7
           path: |
             core/build/reports/tests/
             app/build/reports/tests/
             app/build/reports/lint-results-debug.html
-      - uses: actions/upload-artifact@v4
-        with:
-          name: weathercard-debug-apk
-          path: app/build/outputs/apk/debug/app-debug.apk
+      - name: Remove signing key from runner
+        if: always()
+        run: rm -f "$RUNNER_TEMP/weathercard-nightly.jks"
 

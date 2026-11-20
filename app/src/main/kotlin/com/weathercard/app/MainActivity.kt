@@ -143,7 +143,10 @@ private fun WeatherScreen(vm: WeatherViewModel = viewModel()) {
                     }
                     item {
                         val uri = LocalUriHandler.current
-                        TextButton(onClick = { uri.openUri("https://open-meteo.com/") }) { Text("Hava durumu: Open-Meteo · CC BY 4.0", color = Muted, fontSize = 11.sp) }
+                        Column {
+                            TextButton(onClick = { uri.openUri("https://open-meteo.com/") }) { Text("Hava durumu: Open-Meteo · CC BY 4.0", color = Muted, fontSize = 11.sp) }
+                            Text("WeatherCard ${BuildConfig.VERSION_NAME}", color = Muted, fontSize = 10.sp, modifier = Modifier.padding(start = 12.dp))
+                        }
                     }
                 }
             }

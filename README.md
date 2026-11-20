@@ -34,6 +34,23 @@ Limitler IP ve uygulama bazlı olduğundan her cihaza bağımsız kota varsayıl
 Veri kaynağı: [Open-Meteo](https://open-meteo.com/), [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
 Uygulama ham tahminlerden görsel özetler üretir. [Koşullar](https://open-meteo.com/en/terms), [API dokümanı](https://open-meteo.com/en/docs).
 
+## Telefona indirme ve nightly sürümleri
+
+[Tek nightly indirme sayfası](https://github.com/kskeskin09/weathercard/releases/tag/nightly).
+Private repoya erişimi olan GitHub hesabınla telefonda giriş yap, **weathercard-nightly.apk** dosyasını indir ve aç.
+Android isterse kullandığın tarayıcı için bilinmeyen kaynaklardan uygulama yükleme izni ver.
+APK'lar aynı imzalama anahtarını kullanır; sonraki nightly sürümleri mevcut uygulamanın üzerine kurulabilir.
+
+Her başarılı `main` push'u ve elle başlatılan ana dal derlemesi aynı `nightly` prerelease ve iki sabit dosyayı günceller.
+Her commit için yeni release oluşturulmaz. Nightly burada sürekli güncellenen test kanalıdır; otomatik gece takvimi tanımlı değildir.
+Sürüm adı `0.1.0-nightly.YYYYMMDD.N`, Android sürüm kodu `100000 + GITHUB_RUN_NUMBER` şeklindedir.
+Taban SemVer sürümü `gradle.properties` içindedir; sürüm adı uygulamanın alt kısmında da gösterilir.
+
+Derleme, test, lint, imza doğrulaması ve yayınlama **GitHub Actions** içinde yapılır.
+İmzalama anahtarı/parolası `ANDROID_KEYSTORE_BASE64` ve `ANDROID_SIGNING_PASSWORD` GitHub Secrets alanındadır; kodda tutulmaz.
+PR'lar test edilir ancak nightly yayımlamaz. Bir hata varsa mevcut nightly değişmez.
+UI smoke testi ayrı workflow ile Android emülatöründe çalıştırılır; ikon ve ekran görüntülerini artifact olarak saklar.
+
 ## Geliştirme
 
 Android Studio ile kök klasörü aç. JDK 17, Android SDK 35 ve Gradle Wrapper 8.11.1 kullanılır.
@@ -44,8 +61,8 @@ Yerel SDK yolu `local.properties` içinde tutulur; Git'e eklenmez.
 ```
 
 Windows: `gradlew.bat` kullan. Derlenen APK: `app/build/outputs/apk/debug/app-debug.apk`.
-GitHub Actions her push'ta test/lint/derleme yapar ve debug APK'yı workflow artifact olarak saklar.
-Bu bir mağaza/release imzalı üretim paketi değildir; imzalama anahtarı repoda tutulmaz.
+Normal geliştirmede derlemeleri GitHub Actions üzerinden çalıştır. Yukarıdaki komutlar isteğe bağlı yerel geliştirme içindir.
+Telefona kurulacak çıktı debug artifact yerine nightly sayfasındaki imzalı release APK'sıdır.
 
 ## Yapı
 

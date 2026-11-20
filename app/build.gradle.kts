@@ -11,11 +11,29 @@ android {
         applicationId = "com.weathercard.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = providers.gradleProperty("weatherVersionCode").get().toInt()
+        versionName = providers.gradleProperty("weatherVersionName").get()
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
-    buildFeatures { compose = true }
+    signingConfigs {
+        val keyPath = System.getenv("WEATHERCARD_KEYSTORE")
+        val password = System.getenv("WEATHERCARD_SIGNING_PASSWORD")
+        if (!keyPath.isNullOrBlank() && !password.isNullOrBlank()) {
+            create("nightly") {
+                storeFile = file(keyPath)
+                storePassword = password
+                keyAlias = "weathercard-nightly"
+                keyPassword = password
+            }
+        }
+    }
+    buildTypes {
+        getByName("release") {
+            signingConfig = signingConfigs.findByName("nightly")
+            isDebuggable = false
+        }
+    }
+    buildFeatures { compose = true; buildConfig = true }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
