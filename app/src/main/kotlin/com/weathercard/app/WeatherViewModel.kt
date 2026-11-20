@@ -6,19 +6,15 @@ import android.content.pm.PackageManager
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.google.android.gms.location.LocationServices
-import com.google.android.gms.location.Priority
-import com.google.android.gms.tasks.CancellationTokenSource
+import com.weathercard.app.data.DeviceLocationProvider
 import com.weathercard.core.Place
 import com.weathercard.core.WeatherSnapshot
+import com.weathercard.core.UsageSummary
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.tasks.await
-import kotlinx.coroutines.withTimeout
-import kotlin.math.round
 
 data class WeatherUiState(
     val snapshot: WeatherSnapshot? = null,
@@ -27,6 +23,9 @@ data class WeatherUiState(
     val searchResults: List<Place> = emptyList(),
     val searching: Boolean = false,
     val searchMessage: String? = null,
+    val usage: UsageSummary? = null,
+    val usageError: String? = null,
+    val status: String? = null,
 )
 
 class WeatherViewModel(application: Application) : AndroidViewModel(application) {
@@ -52,17 +51,27 @@ class WeatherViewModel(application: Application) : AndroidViewModel(application)
     fun refresh() = runWeather { app.repository.refreshSixHours(selected) }
     fun reloadAll() = runWeather { app.repository.reloadAll(selected) }
 
-    private fun runWeather(action: suspend () -> WeatherSnapshot) {
+    fun loadUsage() {
+        viewModelScope.launch {
+            try {
+                val usage = app.usage.summary()
+                mutableState.update { it.copy(usage = usage, usageError = null) }
+            } catch (error: CancellationException) { throw error }
+            catch (_: Exception) { mutableState.update { it.copy(usageError = "Kullanım kaydı okunamadı.") } }
+        }
+    }
+
+    private fun runWeather(status: String? = null, action: suspend () -> WeatherSnapshot) {
         if (mutableState.value.busy) return
-        mutableState.update { it.copy(busy = true, message = null) }
+        mutableState.update { it.copy(busy = true, message = null, status = status) }
         viewModelScope.launch {
             try {
                 val snapshot = action()
-                mutableState.update { it.copy(snapshot = snapshot, busy = false) }
+                mutableState.update { it.copy(snapshot = snapshot, busy = false, status = null) }
             }
             catch (error: CancellationException) { throw error }
             catch (error: Exception) {
-                mutableState.update { it.copy(busy = false, message = error.message ?: "Bağlantı kurulamadı. Kayıtlı veriler korunuyor.") }
+                mutableState.update { it.copy(busy = false, status = null, message = error.message ?: "Bağlantı kurulamadı. Kayıtlı veriler korunuyor.") }
             }
         }
     }
@@ -83,24 +92,12 @@ class WeatherViewModel(application: Application) : AndroidViewModel(application)
         mutableState.update { it.copy(message = "Konum izni verilmedi. Şehir seçerek devam edebilirsin.") }
     }
 
-    @android.annotation.SuppressLint("MissingPermission")
     fun useLocation() {
         if (ContextCompat.checkSelfPermission(app, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             permissionDenied(); return
         }
-        runWeather {
-            val cancellation = CancellationTokenSource()
-            val location = try {
-                withTimeout(20_000) {
-                    LocationServices.getFusedLocationProviderClient(app)
-                        .getCurrentLocation(Priority.PRIORITY_BALANCED_POWER_ACCURACY, cancellation.token).await()
-                }
-            } catch (error: kotlinx.coroutines.TimeoutCancellationException) {
-                throw java.io.IOException("Konum alınamadı. Konumu aç veya şehir seç.")
-            } finally { cancellation.cancel() }
-            requireNotNull(location) { "Konum bulunamadı. Konumu aç veya şehir seç." }
-            // ~1 km precision avoids creating new cache files for tiny GPS movements.
-            val place = Place("Mevcut konum", round(location.latitude * 100) / 100, round(location.longitude * 100) / 100)
+        runWeather("Konum bulunuyor…") {
+            val place = DeviceLocationProvider(app).locate()
             val snapshot = app.repository.open(place)
             selected = place
             preferences.edit().putString("name", place.name).putString("latitude", place.latitude.toString())

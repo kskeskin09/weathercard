@@ -17,6 +17,9 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
+import androidx.compose.ui.test.performClick
+import androidx.compose.foundation.Image
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.test.core.app.ActivityScenario
@@ -51,6 +54,9 @@ class WeatherUiSmokeTest {
         runBlocking {
             com.weathercard.app.data.DiskForecastStore(File(app.filesDir, "forecasts"))
                 .write(WeatherSnapshot(place, "Europe/Istanbul", hours, days, now.epochSecond))
+            app.usage.record(RequestKind.FULL_FORECAST)
+            repeat(3) { app.usage.record(RequestKind.SIX_HOURS) }
+            app.usage.record(RequestKind.GEOCODING)
         }
         app.getSharedPreferences("settings", 0).edit().clear().commit()
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
@@ -58,11 +64,17 @@ class WeatherUiSmokeTest {
             compose.onNodeWithText("İstanbul").assertIsDisplayed()
             compose.onAllNodesWithText("18°").onFirst().assertIsDisplayed()
             screenshot(app, "dashboard.png")
+            compose.onNodeWithText("Kota").performClick()
+            compose.waitUntil(10_000) { compose.onAllNodesWithText("Bu ay").fetchSemanticsNodes().isNotEmpty() }
+            compose.onNodeWithText("API kullanımı").assertIsDisplayed()
+            screenshot(app, "usage.png")
+            compose.onNodeWithText("‹ Geri").performClick()
             scenario.onActivity { activity ->
                 activity.setContent {
                     MaterialTheme(colorScheme = darkColorScheme()) {
                         Column(Modifier.fillMaxSize().background(Color(0xFF0B1324)).padding(horizontal = 12.dp, vertical = 32.dp)) {
                             Text("WEATHERCARD · HAVA DURUMU İKONLARI", color = Color(0xFFB3D4FF), fontSize = 13.sp)
+                            Image(painterResource(R.drawable.ic_launcher_foreground), contentDescription = "WeatherCard uygulama logosu", modifier = Modifier.size(64.dp))
                             Text("28 WMO kodu · gündüz / gece", color = Color(0xFF9FAFC8), fontSize = 11.sp, modifier = Modifier.padding(bottom = 10.dp))
                             codes.chunked(4).forEach { row ->
                                 Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(5.dp)) {

@@ -28,6 +28,8 @@ class OpenMeteoApiTest {
         assertEquals("7", url.queryParameter("forecast_days"))
         assertEquals("auto", url.queryParameter("timezone"))
         assertNotNull(url.queryParameter("daily"))
+        assertEquals(com.weathercard.core.UsageTotals.FULL_COST_TENTHS.toInt(), url.queryParameter("hourly")!!.split(',').size + url.queryParameter("daily")!!.split(',').size)
+        assertEquals(com.weathercard.core.UsageTotals.PARTIAL_COST_TENTHS.toInt(), OpenMeteoApi.hourlyFields.size)
     }
 
     @Test fun `partial query uses the same local hour grid as full response`() {

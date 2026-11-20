@@ -15,14 +15,14 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.concurrent.TimeUnit
 
-class OpenMeteoApi(private val clock: Clock = Clock.systemUTC()) : WeatherApi {
+class OpenMeteoApi(private val usage: UsageTracker, private val clock: Clock = Clock.systemUTC()) : WeatherApi {
     private val client = OkHttpClient.Builder()
         .callTimeout(25, TimeUnit.SECONDS)
         .retryOnConnectionFailure(false)
         .build()
 
     override suspend fun fullForecast(place: Place): WeatherSnapshot {
-        val response = request(fullUrl(place))
+        val response = request(fullUrl(place), RequestKind.FULL_FORECAST)
         return WeatherSnapshot(
             place = place,
             timezone = response.getString("timezone"),
@@ -33,7 +33,7 @@ class OpenMeteoApi(private val clock: Clock = Clock.systemUTC()) : WeatherApi {
     }
 
     override suspend fun sixHours(place: Place, window: HourWindow): List<HourWeather> =
-        parseHours(request(sixHourUrl(place, window)))
+        parseHours(request(sixHourUrl(place, window), RequestKind.SIX_HOURS))
 
     suspend fun searchPlaces(query: String): List<Place> {
         val url = "https://geocoding-api.open-meteo.com/v1/search".toHttpUrl().newBuilder()
@@ -41,7 +41,7 @@ class OpenMeteoApi(private val clock: Clock = Clock.systemUTC()) : WeatherApi {
             .addQueryParameter("count", "8")
             .addQueryParameter("language", "tr")
             .addQueryParameter("format", "json").build()
-        val results = request(url).optJSONArray("results") ?: return emptyList()
+        val results = request(url, RequestKind.GEOCODING).optJSONArray("results") ?: return emptyList()
         return (0 until results.length()).map { index ->
             val row = results.getJSONObject(index)
             val label = listOf(row.getString("name"), row.optString("admin1"), row.optString("country"))
@@ -50,7 +50,8 @@ class OpenMeteoApi(private val clock: Clock = Clock.systemUTC()) : WeatherApi {
         }
     }
 
-    private suspend fun request(url: HttpUrl): JSONObject = withContext(Dispatchers.IO) {
+    private suspend fun request(url: HttpUrl, kind: RequestKind): JSONObject = withContext(Dispatchers.IO) {
+        usage.record(kind)
         client.newCall(Request.Builder().url(url).header("User-Agent", "WeatherCard/0.1 (Android)").build()).execute().use { response ->
             if (response.code == 429) throw IOException("İstek kotası doldu. Bir süre sonra tekrar dene; kayıtlı tahminlerin korunuyor.")
             if (!response.isSuccessful) throw IOException("Hava durumu servisine ulaşılamadı (HTTP ${response.code}).")

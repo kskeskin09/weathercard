@@ -6,10 +6,21 @@ Android 8.0 (API 26) ve üzeri cihazları hedefler. Open-Meteo ücretsiz uç nok
 ## İlk sürüm
 
 - Güncel saate ait tahmin, 48 saatlik görünüm ve 7 günlük tahmin.
-- Şehir/ilçe araması ve yalnızca kullanım sırasında yaklaşık cihaz konumu.
+- Şehir/ilçe araması; yaklaşık konum ve kullanıcının izin vermesi halinde tek seferlik kesin GPS konumu.
+- Hava koşuluna ve gündüz/geceye göre değişen tam ekran atmosfer; yerel saat, büyük sıcaklık gösterimi ve yarı saydam gösterge kartları.
+- Google konum servisi boş sonuç verdiğinde Android ağ/GPS sağlayıcılarıyla devam etme, güncel kayıtlı konumu kullanma ve açık ayar yönlendirmeleri.
 - Open-Meteo'nun 28 WMO koduna göre özgün vektör ikonlar; gündüz/gece, yağış şiddeti, sis, donan yağış, kar ve dolu ayrımı.
 - Diskte atomik olarak saklanan, koordinat bazında ayrılmış tahmin önbelleği.
 - Çevrimdışıyken kayıtlı tahmini gösterme; başarısız yenilemede verileri koruma.
+- Saatlik/günlük/aylık tahmini API kota kullanımı ve cihazda kalıcı istek sayacı.
+
+## Kota sayfası
+
+Ana ekrandaki **Kota** sayfası bu cihazın gönderdiği istekleri saklar. Tam tahmin 2,3 ve kısmi yenileme 1,4 kota birimi olarak tahmin edilir.
+Önbellekten gösterim 0 birimdir; şehir aramaları ayrıca sayılır. Başarısız/offline istek denemeleri de ihtiyatlı biçimde sayılır.
+Sayaç UTC saat/gün/ay dönemlerini gösterir. Aylık saatlik gruplama ve toplam geçmiş kaydı, uygulama güncellemelerinde korunur.
+Bu, Open-Meteo'nun gerçek kalan kota bilgisi değildir: ücretsiz uç noktanın hesap bazlı kullanım raporu yoktur, diğer cihazlar ve ortak IP/uygulama trafiği bilinemez.
+Sayaç eklenmeden önceki kullanımı geriye dönük hesaplamaz. Uygulama verileri silinirse sayaç da silinir.
 
 ## Yenileme sözleşmesi
 
@@ -42,7 +53,7 @@ Android isterse kullandığın tarayıcı için bilinmeyen kaynaklardan uygulama
 APK'lar aynı imzalama anahtarını kullanır; sonraki nightly sürümleri mevcut uygulamanın üzerine kurulabilir.
 
 Her başarılı `main` push'u ve elle başlatılan ana dal derlemesi aynı `nightly` prerelease ve iki sabit dosyayı günceller.
-Her commit için yeni release oluşturulmaz. Nightly burada sürekli güncellenen test kanalıdır; otomatik gece takvimi tanımlı değildir.
+Her commit için yeni release oluşturulmaz. Nightly yalnızca **deneme sürümleri** içindir; kullanıcı bir sürümü onayladığında ayrıca SemVer etiketli ana/stable release hazırlanır. Stable release otomatik yayımlanmaz. Otomatik gece takvimi tanımlı değildir.
 Sürüm adı `0.1.0-nightly.YYYYMMDD.N`, Android sürüm kodu `100000 + GITHUB_RUN_NUMBER` şeklindedir.
 Taban SemVer sürümü `gradle.properties` içindedir; sürüm adı uygulamanın alt kısmında da gösterilir.
 
@@ -69,6 +80,6 @@ Telefona kurulacak çıktı nightly sayfasındaki imzalı release APK'sıdır.
 - `app`: Open-Meteo bağlantısı, atomik disk kaydı, konum, şehir arama ve Compose ekranları/vektör ikonlar.
 
 İlk sürümde cihaz konumu “Mevcut konum” olarak gösterilir; ters geocoding yoktur.
-Google Play Services bulunmayan cihazlarda konum alınamayabilir; elle şehir araması kullanılabilir.
+Google Play Services bulunmayan cihazlarda Android konum sağlayıcıları kullanılır. GPS için kesin konum izni ve açık cihaz konumu gerekir; konum elde edilemezse şehir araması kullanılabilir.
 Konum ve önbellek uygulamanın özel alanında saklanır; hesap/analitik/reklam SDK'sı yoktur.
 Hava durumu isteklerinde koordinat Open-Meteo'ya iletilir. Bulut yedeği devre dışıdır.

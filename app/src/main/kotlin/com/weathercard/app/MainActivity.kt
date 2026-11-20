@@ -2,12 +2,16 @@ package com.weathercard.app
 
 import android.Manifest
 import android.os.Bundle
+import android.content.Intent
+import android.provider.Settings
+import android.net.Uri
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -22,12 +26,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.weathercard.app.ui.WeatherGlyph
+import com.weathercard.app.ui.UsageScreen
+import com.weathercard.app.ui.WeatherBackdrop
+import com.weathercard.app.ui.MetricTile
+import com.weathercard.app.ui.MetricKind
 import com.weathercard.core.*
 import kotlinx.coroutines.delay
 import java.time.Instant
@@ -40,8 +49,8 @@ import kotlin.math.roundToInt
 
 private val Ink = Color(0xFF0B1324)
 private val Panel = Color(0xFF142239)
-private val Muted = Color(0xFF9FAFC8)
-private val Accent = Color(0xFFB3D4FF)
+private val Muted = Color(0xFFBCD0E5)
+private val Accent = Color(0xFFD8EDFF)
 private val Turkish = Locale.forLanguageTag("tr-TR")
 
 class MainActivity : ComponentActivity() {
@@ -63,35 +72,52 @@ private fun WeatherScreen(vm: WeatherViewModel = viewModel()) {
     val state by vm.state.collectAsStateWithLifecycle()
     var showSearch by remember { mutableStateOf(false) }
     var confirmFull by remember { mutableStateOf(false) }
-    val location = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        if (granted) vm.useLocation() else vm.permissionDenied()
+    var showUsage by remember { mutableStateOf(false) }
+    if (showUsage) {
+        LaunchedEffect(Unit) { vm.loadUsage() }
+        UsageScreen(state.usage, state.usageError, onBack = { showUsage = false }, onReload = vm::loadUsage)
+        return
+    }
+    val location = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { permissions ->
+        if (permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true || permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true) vm.useLocation() else vm.permissionDenied()
     }
     // Advancing the display clock never makes a network request.
     var now by remember { mutableStateOf(Instant.now()) }
     LaunchedEffect(Unit) { while (true) { now = Instant.now(); delay(30_000) } }
+    val activeZone = state.snapshot?.timezone?.let(ZoneId::of) ?: ZoneId.systemDefault()
+    val activeHour = now.atZone(activeZone).truncatedTo(ChronoUnit.HOURS).toEpochSecond()
+    val activeWeather = state.snapshot?.hours?.find { it.time == activeHour }
+    val daylight = activeWeather?.isDay ?: (now.atZone(activeZone).hour in 7..18)
     Surface(Modifier.fillMaxSize(), color = Ink) {
+      Box(Modifier.fillMaxSize()) {
+        WeatherBackdrop(activeWeather?.weatherCode, daylight, Modifier.fillMaxSize())
         Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()) {
-            Row(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 18.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text("WEATHERCARD", color = Accent, fontSize = 11.sp, letterSpacing = 3.sp, fontWeight = FontWeight.Bold)
-                    Text("Hava, bir bakışta.", color = Muted, fontSize = 12.sp, modifier = Modifier.padding(top = 5.dp))
+                    Text("WEATHERCARD", color = Accent, fontSize = 10.sp, letterSpacing = 2.sp, fontWeight = FontWeight.SemiBold)
                 }
-                TextButton(onClick = { showSearch = true }, enabled = !state.busy) { Text("Şehir seç") }
+                TextButton(onClick = { location.launch(arrayOf(Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.ACCESS_FINE_LOCATION)) }, enabled = !state.busy, contentPadding = PaddingValues(horizontal = 10.dp)) { Text("Konum", fontSize = 12.sp) }
+                TextButton(onClick = { showSearch = true }, enabled = !state.busy, contentPadding = PaddingValues(horizontal = 10.dp)) { Text("Şehir", fontSize = 12.sp) }
+                TextButton(onClick = { showUsage = true }, contentPadding = PaddingValues(horizontal = 10.dp)) { Text("Kota", fontSize = 12.sp) }
             }
             PullToRefreshBox(isRefreshing = state.busy, onRefresh = vm::refresh, modifier = Modifier.weight(1f)) {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 28.dp),
-                    verticalArrangement = Arrangement.spacedBy(18.dp),
+                    verticalArrangement = Arrangement.spacedBy(14.dp),
                 ) {
-                    item {
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                            OutlinedButton(onClick = { location.launch(Manifest.permission.ACCESS_COARSE_LOCATION) }, enabled = !state.busy) { Text("Konumumu kullan") }
-                            TextButton(onClick = vm::refresh, enabled = !state.busy) { Text("Yenile ↻") }
-                        }
-                    }
+                    state.status?.let { status -> item { Text(status, color = Accent, fontSize = 13.sp) } }
                     state.message?.let { message ->
-                        item { Card(colors = CardDefaults.cardColors(containerColor = Color(0xFF3A2933))) { Text(message, Modifier.padding(16.dp), fontSize = 13.sp) } }
+                        item {
+                            val context = LocalContext.current
+                            Card(colors = CardDefaults.cardColors(containerColor = Color(0xFF3A2933))) {
+                                Text(message, Modifier.padding(16.dp), fontSize = 13.sp)
+                                if (message.contains("konum", ignoreCase = true)) Row(Modifier.padding(horizontal = 8.dp)) {
+                                    TextButton(onClick = { context.startActivity(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)) }) { Text("Konum ayarları", fontSize = 12.sp) }
+                                    TextButton(onClick = { context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${context.packageName}"))) }) { Text("Uygulama izni", fontSize = 12.sp) }
+                                }
+                            }
+                        }
                     }
                     val snapshot = state.snapshot
                     if (snapshot == null) {
@@ -112,6 +138,7 @@ private fun WeatherScreen(vm: WeatherViewModel = viewModel()) {
                             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                                 Text("Saat saat", fontSize = 20.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
                                 Text("48 SAAT", color = Muted, fontSize = 10.sp, letterSpacing = 2.sp)
+                                TextButton(onClick = vm::refresh, enabled = !state.busy) { Text("Yenile ↻", fontSize = 12.sp) }
                             }
                         }
                         item {
@@ -151,6 +178,7 @@ private fun WeatherScreen(vm: WeatherViewModel = viewModel()) {
                 }
             }
         }
+      }
     }
     if (showSearch) CityDialog(state, vm::search, onSelect = { vm.load(it); showSearch = false }, onDismiss = { showSearch = false })
     if (confirmFull) AlertDialog(
@@ -165,41 +193,41 @@ private fun WeatherScreen(vm: WeatherViewModel = viewModel()) {
 @Composable
 private fun CurrentCard(place: Place, hour: HourWeather?, now: Instant, zone: ZoneId) {
     val condition = WeatherCondition.from(hour?.weatherCode, hour?.isDay ?: true)
-    Column(Modifier.fillMaxWidth().background(
-        Brush.linearGradient(listOf(Color(0xFF254D7A), Color(0xFF172C4A))), RoundedCornerShape(30.dp)
-    ).padding(24.dp)) {
-        Text(place.name, fontSize = 24.sp, fontWeight = FontWeight.SemiBold)
-        Text(now.atZone(zone).format(DateTimeFormatter.ofPattern("d MMMM EEEE", Turkish)), color = Accent, fontSize = 13.sp, modifier = Modifier.padding(top = 6.dp))
-        Row(Modifier.fillMaxWidth().padding(vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+    Column(Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 4.dp)) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
-                Text(degrees(hour?.temperature), fontSize = 76.sp, fontWeight = FontWeight.Light, letterSpacing = (-4).sp)
-                Text(condition.description, fontSize = 16.sp)
-                Text("Hissedilen ${degrees(hour?.apparentTemperature)}", color = Accent, fontSize = 13.sp, modifier = Modifier.padding(top = 6.dp))
+                Text(place.name.substringBefore(","), fontSize = 24.sp, fontWeight = FontWeight.Medium, maxLines = 1)
+                Text(now.atZone(zone).format(DateTimeFormatter.ofPattern("d MMMM · EEEE", Turkish)), color = Muted, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp))
             }
-            WeatherGlyph(hour?.weatherCode, hour?.isDay ?: true, Modifier.size(126.dp))
+            Column(horizontalAlignment = Alignment.End) {
+                Text(now.atZone(zone).format(DateTimeFormatter.ofPattern("HH:mm")), fontSize = 24.sp, fontWeight = FontWeight.Light)
+                Text("YEREL SAAT", color = Muted, fontSize = 8.sp, letterSpacing = 1.5.sp)
+            }
         }
-        HorizontalDivider(color = Color.White.copy(alpha = .12f))
-        Row(Modifier.fillMaxWidth().padding(top = 18.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-            Stat("Yağış", percent(hour?.precipitationProbability))
-            Stat("Rüzgâr", "${number(hour?.windSpeed)} km/sa")
-            Stat("Nem", percent(hour?.humidity))
+        Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(degrees(hour?.temperature), fontSize = 94.sp, fontWeight = FontWeight.Light, letterSpacing = (-6).sp, lineHeight = 100.sp)
+                Text(condition.description, color = Accent, fontSize = 16.sp, fontWeight = FontWeight.Medium)
+            }
+            WeatherGlyph(hour?.weatherCode, hour?.isDay ?: true, Modifier.size(136.dp))
         }
-        Row(Modifier.fillMaxWidth().padding(top = 16.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-            Stat("Basınç", "${number(hour?.pressure)} hPa")
-            Stat("Görüş", "${number(hour?.visibility?.div(1000))} km")
-            Stat("UV", number(hour?.uvIndex))
+        Row(Modifier.fillMaxWidth().padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            MetricTile("Hissedilen", degrees(hour?.apparentTemperature), "", MetricKind.FEELS_LIKE, Modifier.weight(1f))
+            MetricTile("Yağış ihtimali", percent(hour?.precipitationProbability), "", MetricKind.RAIN, Modifier.weight(1f))
+            MetricTile("Rüzgâr", number(hour?.windSpeed), "km/sa", MetricKind.WIND, Modifier.weight(1f))
+        }
+        Row(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            MetricTile("Nem", percent(hour?.humidity), "", MetricKind.HUMIDITY, Modifier.weight(1f))
+            MetricTile("UV indeksi", number(hour?.uvIndex), "", MetricKind.UV, Modifier.weight(1f))
+            MetricTile("Basınç", number(hour?.pressure), "hPa", MetricKind.PRESSURE, Modifier.weight(1f))
         }
     }
 }
 
 @Composable
-private fun Stat(label: String, value: String) {
-    Column { Text(label, color = Accent, fontSize = 11.sp); Text(value, fontSize = 14.sp, modifier = Modifier.padding(top = 5.dp)) }
-}
-
-@Composable
 private fun HourCard(hour: HourWeather, zone: ZoneId, current: Boolean) {
-    Column(Modifier.width(76.dp).background(if (current) Color(0xFF28486E) else Panel, RoundedCornerShape(22.dp)).padding(vertical = 14.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+    Column(Modifier.width(76.dp).background(Color.White.copy(alpha = if (current) .18f else .06f), RoundedCornerShape(24.dp))
+        .border(1.dp, Color.White.copy(alpha = if (current) .25f else .08f), RoundedCornerShape(24.dp)).padding(vertical = 14.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         Text(if (current) "Şimdi" else Instant.ofEpochSecond(hour.time).atZone(zone).format(DateTimeFormatter.ofPattern("HH:mm")), color = if (current) Color.White else Muted, fontSize = 12.sp)
         WeatherGlyph(hour.weatherCode, hour.isDay ?: true, Modifier.size(53.dp).padding(top = 5.dp))
         Text(degrees(hour.temperature), fontSize = 20.sp, fontWeight = FontWeight.Medium)
@@ -209,7 +237,8 @@ private fun HourCard(hour: HourWeather, zone: ZoneId, current: Boolean) {
 
 @Composable
 private fun DayRow(day: DayWeather, today: LocalDate) {
-    Row(Modifier.fillMaxWidth().background(Panel, RoundedCornerShape(20.dp)).padding(horizontal = 16.dp, vertical = 9.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.fillMaxWidth().background(Color.White.copy(alpha = .055f), RoundedCornerShape(20.dp))
+        .border(1.dp, Color.White.copy(alpha = .06f), RoundedCornerShape(20.dp)).padding(horizontal = 16.dp, vertical = 9.dp), verticalAlignment = Alignment.CenterVertically) {
         val date = LocalDate.parse(day.date)
         Column(Modifier.weight(1f)) {
             Text(if (date == today) "Bugün" else date.format(DateTimeFormatter.ofPattern("EEEE", Turkish)), fontSize = 14.sp)
