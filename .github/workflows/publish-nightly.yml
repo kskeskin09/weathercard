@@ -28,14 +28,11 @@ jobs:
           gh api "repos/$GITHUB_REPOSITORY/actions/runs/$CANDIDATE_RUN" > "$RUNNER_TEMP/candidate.json"
           jq -e --arg repo "$GITHUB_REPOSITORY" '.conclusion == "success" and .head_branch == "main" and .head_repository.full_name == $repo and .path == ".github/workflows/android.yml" and .event != "pull_request"' "$RUNNER_TEMP/candidate.json"
           gh run view "$CANDIDATE_RUN" --repo "$GITHUB_REPOSITORY" --json jobs | jq -e 'any(.jobs[].steps[]; .name == "Verify APK signature and prepare download" and .conclusion == "success")'
-          gh run download "$CANDIDATE_RUN" --repo "$GITHUB_REPOSITORY" --pattern 'weathercard-candidate-*' --dir downloaded
-          mapfile -t APKS < <(find downloaded -type f -name weathercard-nightly.apk)
-          test "${#APKS[@]}" -eq 1
-          APK_DIR=$(dirname "${APKS[0]}")
-          (cd "$APK_DIR" && sha256sum --check weathercard-nightly.apk.sha256)
+          ARTIFACT_NAME=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$CANDIDATE_RUN/artifacts" --jq '[.artifacts[] | select((.name | startswith("weathercard-candidate-")) and (.expired == false))] | if length == 1 then .[0].name else error("Expected exactly one candidate APK artifact") end')
+          gh run download "$CANDIDATE_RUN" --repo "$GITHUB_REPOSITORY" --name "$ARTIFACT_NAME" --dir downloaded
+          (cd downloaded && sha256sum --check weathercard-nightly.apk.sha256)
           mkdir dist
-          cp "$APK_DIR/weathercard-nightly.apk" "$APK_DIR/weathercard-nightly.apk.sha256" dist/
-          ARTIFACT_NAME=$(basename "$APK_DIR")
+          cp downloaded/weathercard-nightly.apk downloaded/weathercard-nightly.apk.sha256 dist/
           echo "VERSION_NAME=${ARTIFACT_NAME#weathercard-candidate-}" >> "$GITHUB_ENV"
           echo "SOURCE_SHA=$(jq -r '.head_sha' "$RUNNER_TEMP/candidate.json")" >> "$GITHUB_ENV"
           echo "VERSION_CODE=$((100000 + $(jq -r '.run_number' "$RUNNER_TEMP/candidate.json")))" >> "$GITHUB_ENV"
