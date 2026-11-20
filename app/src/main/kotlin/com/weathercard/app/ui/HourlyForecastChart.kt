@@ -46,7 +46,7 @@ fun HourlyForecastChart(hours: List<HourWeather>, currentHour: Long, zone: ZoneI
     val center = (high + low) / 2
     fun y(index: Int): Float = (64 - (((ordered[index.coerceIn(0, ordered.lastIndex)].temperature ?: center) - center) / range) * 58).toFloat()
     val initial = ordered.indexOfFirst { it.time >= currentHour }.let { if (it < 0) (ordered.size - 4).coerceAtLeast(0) else it }
-    val scroll = rememberLazyListState(initialFirstVisibleItem = initial)
+    val scroll = rememberLazyListState(initialFirstVisibleItemIndex = initial)
     val locale = Locale.forLanguageTag("tr-TR")
     LazyRow(
         state = scroll,
