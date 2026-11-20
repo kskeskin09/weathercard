@@ -15,6 +15,8 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.test.core.app.ActivityScenario
@@ -54,7 +56,7 @@ class WeatherUiSmokeTest {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             compose.waitUntil(15_000) { compose.onAllNodes(androidx.compose.ui.test.hasText("İstanbul")).fetchSemanticsNodes().isNotEmpty() }
             compose.onNodeWithText("İstanbul").assertIsDisplayed()
-            compose.onNodeWithText("18°").assertExists()
+            compose.onAllNodesWithText("18°").onFirst().assertIsDisplayed()
             screenshot(app, "dashboard.png")
             scenario.onActivity { activity ->
                 activity.setContent {
