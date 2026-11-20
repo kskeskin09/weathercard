@@ -71,6 +71,7 @@ class WeatherUiSmokeTest {
             compose.waitUntil(15_000) { compose.onAllNodes(androidx.compose.ui.test.hasText("İstanbul")).fetchSemanticsNodes().isNotEmpty() }
             compose.onNodeWithText("İstanbul").assertIsDisplayed()
             compose.onAllNodesWithText("18°").onFirst().assertIsDisplayed()
+            compose.onNodeWithContentDescription("Diğer seçenekler").performClick()
             compose.onNodeWithText("Kota").performClick()
             compose.waitUntil(10_000) { compose.onAllNodesWithText("Bu ay").fetchSemanticsNodes().isNotEmpty() }
             compose.onNodeWithText("API kullanımı").assertIsDisplayed()
@@ -150,19 +151,20 @@ class WeatherUiSmokeTest {
             }
             runBlocking {
                 com.weathercard.app.data.DiskForecastStore(File(app.filesDir, "forecasts")).write(
-                    WeatherSnapshot(Place("İstanbul", 41.0082, 28.9784), "Europe/Istanbul", hours, days, reference.epochSecond)
+                    WeatherSnapshot(Place("İstanbul", 41.0082, 28.9784, isCurrentLocation = true), "Europe/Istanbul", hours, days, reference.epochSecond)
                 )
             }
-            app.getSharedPreferences("settings", 0).edit().clear().commit()
+            app.getSharedPreferences("settings", 0).edit().clear().putBoolean("is_current", true).commit()
             ActivityScenario.launch(MainActivity::class.java).use { scenario ->
                 scenario.onActivity { activity -> activity.setContent { WeatherCardTheme { WeatherScreen(previewNow = reference) } } }
                 compose.waitUntil(15_000) { compose.onAllNodesWithText("İstanbul").fetchSemanticsNodes().isNotEmpty() }
                 compose.onAllNodesWithText("İstanbul").onFirst().assertIsDisplayed()
+                compose.onNodeWithContentDescription("Mevcut konum").assertIsDisplayed()
                 screenshot(app, "$name-preview.png")
                 if (name == "day") {
                     compose.onNodeWithTag("forecast-list").performScrollToIndex(1)
                     screenshot(app, "day-hourly.png")
-                    compose.onNodeWithTag("forecast-list").performScrollToIndex(3)
+                    compose.onNodeWithTag("forecast-list").performScrollToIndex(5)
                     screenshot(app, "day-wind-sun.png")
                 }
             }

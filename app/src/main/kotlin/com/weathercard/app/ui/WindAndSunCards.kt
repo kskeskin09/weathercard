@@ -33,22 +33,23 @@ private fun Modifier.glassCard() = fillMaxWidth().background(Color.White.copy(al
     .border(1.dp, Color.White.copy(alpha = .09f), CardShape)
 
 @Composable
-fun WindCard(hour: HourWeather?, modifier: Modifier = Modifier) {
+fun WindCard(hour: HourWeather?, modifier: Modifier = Modifier, compact: Boolean = false) {
     val direction = hour?.windDirection
     val names = listOf("Kuzey", "Kuzeydoğu", "Doğu", "Güneydoğu", "Güney", "Güneybatı", "Batı", "Kuzeybatı")
     val name = direction?.let { names[((it + 22.5) / 45).toInt().mod(8)] } ?: "Yön bilinmiyor"
     val speed = hour?.windSpeed?.let { String.format(Locale.forLanguageTag("tr-TR"), "%.1f", it) } ?: "—"
-    Row(modifier.glassCard().padding(20.dp), verticalAlignment = Alignment.CenterVertically) {
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("RÜZGÂR", color = Quiet, fontSize = 10.sp, letterSpacing = 2.sp)
-            Text(name, fontSize = 25.sp, fontWeight = FontWeight.Bold)
+    Row(modifier.glassCard().then(if (compact) Modifier.height(132.dp) else Modifier).padding(if (compact) 12.dp else 20.dp), verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(if (compact) 5.dp else 8.dp)) {
+            if (!compact) Text("RÜZGÂR", color = Quiet, fontSize = 10.sp, letterSpacing = 2.sp)
+            Text(name, fontSize = if (compact) 16.sp else 25.sp, lineHeight = if (compact) 20.sp else 30.sp, fontWeight = FontWeight.Bold)
             Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                Text(speed, fontSize = 30.sp, fontWeight = FontWeight.SemiBold)
-                Text("km/sa", color = Quiet, fontSize = 12.sp, modifier = Modifier.padding(bottom = 5.dp))
+                Text(speed, fontSize = if (compact) 20.sp else 30.sp, lineHeight = if (compact) 24.sp else 34.sp, fontWeight = FontWeight.SemiBold)
+                if (!compact) Text("km/sa", color = Quiet, fontSize = 12.sp, modifier = Modifier.padding(bottom = 5.dp))
             }
-            hour?.windGusts?.let { Text("Hamle ${String.format(Locale.forLanguageTag("tr-TR"), "%.1f", it)} km/sa", color = Quiet, fontSize = 11.sp) }
+            if (compact) Text("km/sa", color = Quiet, fontSize = 9.sp, lineHeight = 12.sp)
+            if (!compact) hour?.windGusts?.let { Text("Hamle ${String.format(Locale.forLanguageTag("tr-TR"), "%.1f", it)} km/sa", color = Quiet, fontSize = 11.sp) }
         }
-        Box(Modifier.size(132.dp), contentAlignment = Alignment.Center) {
+        Box(Modifier.size(if (compact) 72.dp else 132.dp), contentAlignment = Alignment.Center) {
             Canvas(Modifier.fillMaxSize()) {
                 val c = center
                 val radius = size.minDimension * .46f
@@ -72,35 +73,35 @@ fun WindCard(hour: HourWeather?, modifier: Modifier = Modifier) {
                     }
                 }
             }
-            Text("K", color = Quiet, fontSize = 11.sp, modifier = Modifier.align(Alignment.TopCenter).padding(top = 11.dp))
-            Text("G", color = Quiet, fontSize = 11.sp, modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 11.dp))
-            Text("B", color = Quiet, fontSize = 11.sp, modifier = Modifier.align(Alignment.CenterStart).padding(start = 11.dp))
-            Text("D", color = Quiet, fontSize = 11.sp, modifier = Modifier.align(Alignment.CenterEnd).padding(end = 11.dp))
+            Text("K", color = Quiet, fontSize = if (compact) 8.sp else 11.sp, lineHeight = if (compact) 10.sp else 14.sp, modifier = Modifier.align(Alignment.TopCenter).padding(top = if (compact) 7.dp else 11.dp))
+            Text("G", color = Quiet, fontSize = if (compact) 8.sp else 11.sp, lineHeight = if (compact) 10.sp else 14.sp, modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = if (compact) 7.dp else 11.dp))
+            Text("B", color = Quiet, fontSize = if (compact) 8.sp else 11.sp, lineHeight = if (compact) 10.sp else 14.sp, modifier = Modifier.align(Alignment.CenterStart).padding(start = if (compact) 7.dp else 11.dp))
+            Text("D", color = Quiet, fontSize = if (compact) 8.sp else 11.sp, lineHeight = if (compact) 10.sp else 14.sp, modifier = Modifier.align(Alignment.CenterEnd).padding(end = if (compact) 7.dp else 11.dp))
         }
     }
 }
 
 @Composable
-fun SunTimesCard(day: DayWeather?, now: Instant, zone: ZoneId, modifier: Modifier = Modifier) {
+fun SunTimesCard(day: DayWeather?, now: Instant, zone: ZoneId, modifier: Modifier = Modifier, compact: Boolean = false) {
     val rise = day?.sunrise
     val set = day?.sunset
     val time = DateTimeFormatter.ofPattern("HH:mm").withZone(zone)
     fun format(epoch: Long?) = epoch?.let { time.format(Instant.ofEpochSecond(it)) } ?: "—"
     val daylight = rise != null && set != null && now.epochSecond in rise..set
-    Row(modifier.glassCard().heightIn(min = 164.dp).padding(20.dp), verticalAlignment = Alignment.CenterVertically) {
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(15.dp)) {
-            Text("GÜNEŞİN YOLU", color = Quiet, fontSize = 10.sp, letterSpacing = 1.5.sp)
+    Row(modifier.glassCard().heightIn(min = if (compact) 132.dp else 164.dp).padding(if (compact) 12.dp else 20.dp), verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(if (compact) 10.dp else 15.dp)) {
+            if (!compact) Text("GÜNEŞİN YOLU", color = Quiet, fontSize = 10.sp, letterSpacing = 1.5.sp)
             Column {
-                Text(format(rise), fontSize = 27.sp, fontWeight = FontWeight.SemiBold)
-                Text("Gün doğumu", color = Quiet, fontSize = 12.sp)
+                Text(format(rise), fontSize = if (compact) 19.sp else 27.sp, lineHeight = if (compact) 23.sp else 32.sp, fontWeight = FontWeight.SemiBold)
+                Text("Gün doğumu", color = Quiet, fontSize = if (compact) 9.sp else 12.sp, lineHeight = if (compact) 12.sp else 16.sp)
             }
             Column {
-                Text(format(set), fontSize = 27.sp, fontWeight = FontWeight.SemiBold)
-                Text("Gün batımı", color = Quiet, fontSize = 12.sp)
+                Text(format(set), fontSize = if (compact) 19.sp else 27.sp, lineHeight = if (compact) 23.sp else 32.sp, fontWeight = FontWeight.SemiBold)
+                Text("Gün batımı", color = Quiet, fontSize = if (compact) 9.sp else 12.sp, lineHeight = if (compact) 12.sp else 16.sp)
             }
         }
-        Column(Modifier.width(146.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Canvas(Modifier.fillMaxWidth().height(112.dp)) {
+        Column(Modifier.width(if (compact) 70.dp else 146.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Canvas(Modifier.fillMaxWidth().height(if (compact) 76.dp else 112.dp)) {
                 val base = size.height * .78f
                 val amplitude = size.height * .6f
                 val left = 8.dp.toPx()
@@ -123,7 +124,7 @@ fun SunTimesCard(day: DayWeather?, now: Instant, zone: ZoneId, modifier: Modifie
                     drawCircle(Color.White, 5.dp.toPx(), point, style = Stroke(1.2.dp.toPx()))
                 }
             }
-            Text(if (rise == null || set == null) "Güneş verisi yok" else if (daylight) "Gündüz" else "Gece", color = Quiet, fontSize = 11.sp)
+            if (!compact) Text(if (rise == null || set == null) "Güneş verisi yok" else if (daylight) "Gündüz" else "Gece", color = Quiet, fontSize = 11.sp)
         }
     }
 }

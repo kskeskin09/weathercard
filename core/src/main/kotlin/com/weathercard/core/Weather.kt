@@ -6,7 +6,7 @@ import java.time.ZoneId
 import java.time.temporal.ChronoUnit
 
 @Serializable
-data class Place(val name: String, val latitude: Double, val longitude: Double) {
+data class Place(val name: String, val latitude: Double, val longitude: Double, val isCurrentLocation: Boolean = false) {
     init {
         require(latitude.isFinite() && latitude in -90.0..90.0)
         require(longitude.isFinite() && longitude in -180.0..180.0)

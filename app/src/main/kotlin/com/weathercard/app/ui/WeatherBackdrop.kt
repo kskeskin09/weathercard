@@ -19,25 +19,25 @@ fun WeatherBackdrop(code: Int?, isDay: Boolean, modifier: Modifier = Modifier) {
     val rain = condition.precipitation in listOf(Precipitation.RAIN, Precipitation.DRIZZLE, Precipitation.SHOWERS)
     val snow = condition.precipitation in listOf(Precipitation.SNOW, Precipitation.SNOW_GRAINS, Precipitation.SNOW_SHOWERS)
     val palette = when {
-        condition.thunder -> listOf(Color(0xFF342552), Color(0xFF1F254B), Color(0xFF0A1328))
-        condition.sky == Sky.FOG -> listOf(Color(0xFF465C72), Color(0xFF253D53), Color(0xFF101F32))
-        snow -> listOf(Color(0xFF3E6680), Color(0xFF1E3D59), Color(0xFF0C1C30))
-        rain -> listOf(Color(0xFF284D72), Color(0xFF172E50), Color(0xFF0A152A))
-        !isDay -> listOf(Color(0xFF151B47), Color(0xFF1A2B51), Color(0xFF080F23))
-        condition.sky == Sky.OVERCAST -> listOf(Color(0xFF436582), Color(0xFF264562), Color(0xFF11233D))
-        else -> listOf(Color(0xFF24699B), Color(0xFF174A78), Color(0xFF102441))
+        condition.thunder -> listOf(Color(0xFF343E5C), Color(0xFF3D4C6D), Color(0xFF455C7A))
+        condition.sky == Sky.FOG -> listOf(Color(0xFF475A74), Color(0xFF506985), Color(0xFF59758E))
+        snow -> listOf(Color(0xFF405A75), Color(0xFF486681), Color(0xFF50748D))
+        rain -> listOf(Color(0xFF344A6A), Color(0xFF3D5677), Color(0xFF496887))
+        !isDay -> listOf(Color(0xFF2E3D60), Color(0xFF394E70), Color(0xFF456380))
+        condition.sky == Sky.OVERCAST -> listOf(Color(0xFF3B506F), Color(0xFF435D7C), Color(0xFF4B6A88))
+        else -> listOf(Color(0xFF344C70), Color(0xFF405C7D), Color(0xFF4A6C8A))
     }
     Canvas(modifier) {
         val w = size.width
         val h = size.height
         drawRect(Brush.verticalGradient(palette))
         val glow = if (isDay && !rain && !snow) Color(0xFFFFD99C) else Color(0xFF9EBEFF)
-        drawCircle(Brush.radialGradient(listOf(glow.copy(alpha = .2f), Color.Transparent), Offset(w * .88f, h * .12f), w * .85f), w * .85f, Offset(w * .88f, h * .12f))
+        drawCircle(Brush.radialGradient(listOf(glow.copy(alpha = .06f), Color.Transparent), Offset(w * .88f, h * .12f), w * .85f), w * .85f, Offset(w * .88f, h * .12f))
         if (!isDay && !rain && !snow && condition.sky != Sky.FOG) {
             repeat(40) { i ->
                 val x = ((i * 71 + 17) % 101) / 101f * w
                 val y = ((i * 37 + 11) % 97) / 97f * h * .58f
-                drawCircle(Color.White.copy(alpha = .15f + (i % 4) * .13f), if (i % 5 == 0) 2.5f else 1.3f, Offset(x, y))
+                drawCircle(Color.White.copy(alpha = .04f + (i % 4) * .03f), if (i % 5 == 0) 2f else 1f, Offset(x, y))
             }
         }
         // Broad translucent cloud banks give depth without competing with the data.
@@ -50,7 +50,7 @@ fun WeatherBackdrop(code: Int?, isDay: Boolean, modifier: Modifier = Modifier) {
                 lineTo(w * 1.3f, y + w * .3f); lineTo(-w * .3f, y + w * .3f); close()
             }
             val cloudy = condition.sky in listOf(Sky.OVERCAST, Sky.FOG) || rain || snow
-            drawPath(cloud, Color.White.copy(alpha = if (cloudy) .055f else .025f))
+            drawPath(cloud, Color.White.copy(alpha = if (cloudy) .022f else .012f))
         }
         if (rain || condition.thunder) repeat(55) { i ->
             val x = ((i * 43 + 7) % 103) / 103f * w
@@ -67,6 +67,6 @@ fun WeatherBackdrop(code: Int?, isDay: Boolean, modifier: Modifier = Modifier) {
             drawOval(Color.White.copy(alpha = .045f), Offset(-w * .2f, center.y), androidx.compose.ui.geometry.Size(w * 1.4f, h * .08f))
         }
         // A gentle lower scrim keeps forecast and footer contrast consistent in every condition.
-        drawRect(Brush.verticalGradient(listOf(Color.Transparent, Color(0xFF050D20).copy(alpha = .38f))))
+        drawRect(Brush.verticalGradient(listOf(Color.Transparent, Color(0xFF050D20).copy(alpha = .06f))))
     }
 }

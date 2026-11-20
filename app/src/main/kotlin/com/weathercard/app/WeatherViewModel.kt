@@ -35,6 +35,7 @@ class WeatherViewModel(application: Application) : AndroidViewModel(application)
         preferences.getString("name", "İstanbul")!!,
         preferences.getString("latitude", "41.0082")!!.toDouble(),
         preferences.getString("longitude", "28.9784")!!.toDouble(),
+        preferences.getBoolean("is_current", preferences.getString("name", "") == "Mevcut konum"),
     )
     private val mutableState = MutableStateFlow(WeatherUiState())
     val state = mutableState.asStateFlow()
@@ -45,7 +46,8 @@ class WeatherViewModel(application: Application) : AndroidViewModel(application)
         val snapshot = app.repository.open(place)
         selected = place
         preferences.edit().putString("name", place.name)
-            .putString("latitude", place.latitude.toString()).putString("longitude", place.longitude.toString()).apply()
+            .putString("latitude", place.latitude.toString()).putString("longitude", place.longitude.toString())
+            .putBoolean("is_current", place.isCurrentLocation).apply()
         snapshot
     }
     fun refresh() = runWeather { app.repository.refreshSixHours(selected) }
@@ -101,7 +103,7 @@ class WeatherViewModel(application: Application) : AndroidViewModel(application)
             val snapshot = app.repository.open(place)
             selected = place
             preferences.edit().putString("name", place.name).putString("latitude", place.latitude.toString())
-                .putString("longitude", place.longitude.toString()).apply()
+                .putString("longitude", place.longitude.toString()).putBoolean("is_current", true).apply()
             snapshot
         }
     }

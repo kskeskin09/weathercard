@@ -85,6 +85,9 @@ class DeviceLocationProvider(private val context: Context, private val allowGoog
         if (hasAccuracy()) accuracy else 10_000f,
     )
 
-    private fun LocationFix.asPlace() = Place("Mevcut konum", round(latitude * 100) / 100, round(longitude * 100) / 100)
+    private suspend fun LocationFix.asPlace(): Place {
+        val label = LocationNameResolver(context).resolve(latitude, longitude) ?: "Mevcut konum"
+        return Place(label, round(latitude * 100) / 100, round(longitude * 100) / 100, isCurrentLocation = true)
+    }
 }
 

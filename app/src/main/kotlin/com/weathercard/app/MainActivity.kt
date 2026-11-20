@@ -33,12 +33,15 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.weathercard.app.ui.WeatherGlyph
 import com.weathercard.app.ui.UsageScreen
 import com.weathercard.app.ui.WeatherBackdrop
-import com.weathercard.app.ui.MetricTile
-import com.weathercard.app.ui.MetricKind
 import com.weathercard.app.ui.HourlyForecastChart
 import com.weathercard.app.ui.WindCard
 import com.weathercard.app.ui.SunTimesCard
 import com.weathercard.app.ui.WeatherTypography
+import com.weathercard.app.ui.WeatherDetails
+import com.weathercard.app.ui.LocationMark
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.text.style.TextOverflow
 import com.weathercard.core.*
 import kotlinx.coroutines.delay
 import java.time.Instant
@@ -80,6 +83,7 @@ internal fun WeatherScreen(vm: WeatherViewModel = viewModel(), previewNow: Insta
     var showSearch by remember { mutableStateOf(false) }
     var confirmFull by remember { mutableStateOf(false) }
     var showUsage by remember { mutableStateOf(false) }
+    var showMenu by remember { mutableStateOf(false) }
     if (showUsage) {
         LaunchedEffect(Unit) { vm.loadUsage() }
         UsageScreen(state.usage, state.usageError, onBack = { showUsage = false }, onReload = vm::loadUsage)
@@ -99,13 +103,26 @@ internal fun WeatherScreen(vm: WeatherViewModel = viewModel(), previewNow: Insta
       Box(Modifier.fillMaxSize()) {
         WeatherBackdrop(activeWeather?.weatherCode, daylight, Modifier.fillMaxSize())
         Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()) {
-            Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text("WEATHERCARD", color = Accent, fontSize = 10.sp, letterSpacing = 2.sp, fontWeight = FontWeight.SemiBold)
+            Row(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 3.dp), verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = { showSearch = true }, enabled = !state.busy, modifier = Modifier.semantics { contentDescription = "Şehir ekle" }) {
+                    Text("+", fontSize = 38.sp, lineHeight = 40.sp, fontWeight = FontWeight.Normal)
                 }
-                TextButton(onClick = { location.launch(arrayOf(Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.ACCESS_FINE_LOCATION)) }, enabled = !state.busy, contentPadding = PaddingValues(horizontal = 10.dp)) { Text("Konum", fontSize = 12.sp) }
-                TextButton(onClick = { showSearch = true }, enabled = !state.busy, contentPadding = PaddingValues(horizontal = 10.dp)) { Text("Şehir", fontSize = 12.sp) }
-                TextButton(onClick = { showUsage = true }, contentPadding = PaddingValues(horizontal = 10.dp)) { Text("Kota", fontSize = 12.sp) }
+                Row(Modifier.weight(1f), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
+                    if (state.snapshot?.place?.isCurrentLocation == true) { LocationMark(Modifier.size(14.dp)); Spacer(Modifier.width(7.dp)) }
+                    Text(state.snapshot?.place?.name?.substringBefore(",") ?: "Hava durumu", fontSize = 21.sp, lineHeight = 26.sp,
+                        fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+                Box {
+                    IconButton(onClick = { showMenu = true }, modifier = Modifier.semantics { contentDescription = "Diğer seçenekler" }) { Text("⋮", fontSize = 28.sp) }
+                    DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
+                        DropdownMenuItem(text = { Text("Konumumu kullan") }, enabled = !state.busy, onClick = {
+                            showMenu = false; location.launch(arrayOf(Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.ACCESS_FINE_LOCATION))
+                        })
+                        DropdownMenuItem(text = { Text("Şehir seç") }, onClick = { showMenu = false; showSearch = true })
+                        DropdownMenuItem(text = { Text("Kota") }, onClick = { showMenu = false; showUsage = true })
+                        DropdownMenuItem(text = { Text("7 günü yeniden yükle") }, enabled = !state.busy, onClick = { showMenu = false; confirmFull = true })
+                    }
+                }
             }
             PullToRefreshBox(isRefreshing = state.busy, onRefresh = vm::refresh, modifier = Modifier.weight(1f)) {
                 LazyColumn(
@@ -139,10 +156,10 @@ internal fun WeatherScreen(vm: WeatherViewModel = viewModel(), previewNow: Insta
                         val zone = ZoneId.of(snapshot.timezone)
                         val hour = now.atZone(zone).truncatedTo(ChronoUnit.HOURS).toEpochSecond()
                         val current = snapshot.hours.find { it.time == hour }
-                        item { CurrentCard(snapshot.place, current, now, zone) }
+                        item { CurrentCard(current, now, zone) }
                         item {
                             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                                Text("Saat saat", fontSize = 20.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                                Text("Saatlik tahmin", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
                                 Text("${snapshot.hours.size} SAAT", color = Muted, fontSize = 10.sp, letterSpacing = 2.sp)
                                 TextButton(onClick = vm::refresh, enabled = !state.busy) { Text("Yenile ↻", fontSize = 12.sp) }
                             }
@@ -151,16 +168,10 @@ internal fun WeatherScreen(vm: WeatherViewModel = viewModel(), previewNow: Insta
                             key(snapshot.place.cacheKey) { HourlyForecastChart(snapshot.hours, hour, zone) }
                         }
                         val today = now.atZone(zone).toLocalDate()
-                        item { WindCard(current) }
-                        item { SunTimesCard(snapshot.days.find { it.date == today.toString() }, now, zone) }
-                        item {
-                            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                                Text("7 günlük tahmin", fontSize = 20.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
-                                TextButton(onClick = { confirmFull = true }, enabled = !state.busy) { Text("Tümünü güncelle", fontSize = 11.sp) }
-                            }
-                        }
                         val days = snapshot.days.filter { !LocalDate.parse(it.date).isBefore(today) }
-                        items(days, key = { it.date }) { DayRow(it, today) }
+                        item { ForecastDaysCard(days, today, !state.busy) { confirmFull = true } }
+                        item { Text("DETAYLAR", color = Muted, fontSize = 10.sp, letterSpacing = 1.5.sp, modifier = Modifier.padding(top = 10.dp)) }
+                        item(key = "weather-details") { WeatherDetails(current, snapshot.days.find { it.date == today.toString() }, now, zone) }
                         item {
                             Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
                                 val fullTime = Instant.ofEpochSecond(snapshot.fullFetchedAt)
@@ -196,52 +207,47 @@ internal fun WeatherScreen(vm: WeatherViewModel = viewModel(), previewNow: Insta
 }
 
 @Composable
-private fun CurrentCard(place: Place, hour: HourWeather?, now: Instant, zone: ZoneId) {
+private fun CurrentCard(hour: HourWeather?, now: Instant, zone: ZoneId) {
     val condition = WeatherCondition.from(hour?.weatherCode, hour?.isDay ?: true)
-    Column(Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 2.dp)) {
+    Column(Modifier.fillMaxWidth().heightIn(min = 240.dp).padding(top = 28.dp, bottom = 30.dp),
+        horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+        Text(degrees(hour?.temperature), fontSize = 104.sp, lineHeight = 108.sp, letterSpacing = (-4).sp, fontWeight = FontWeight.Bold)
+        Text(condition.description, color = Accent, fontSize = 18.sp, lineHeight = 24.sp, fontWeight = FontWeight.SemiBold)
+        Text(now.atZone(zone).format(DateTimeFormatter.ofPattern("HH:mm · d MMMM EEEE", Turkish)), color = Muted, fontSize = 11.sp,
+            lineHeight = 16.sp, modifier = Modifier.padding(top = 12.dp))
+    }
+}
+
+@Composable
+private fun ForecastDaysCard(days: List<DayWeather>, today: LocalDate, enabled: Boolean, onFullRefresh: () -> Unit) {
+    var expanded by remember(days) { mutableStateOf(false) }
+    Column(Modifier.fillMaxWidth().background(Color.White.copy(alpha = .07f), RoundedCornerShape(28.dp))
+        .border(1.dp, Color.White.copy(alpha = .07f), RoundedCornerShape(28.dp)).padding(16.dp)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
-                Text(place.name.substringBefore(","), fontSize = 23.sp, lineHeight = 27.sp, fontWeight = FontWeight.Bold, maxLines = 1)
-                Text(now.atZone(zone).format(DateTimeFormatter.ofPattern("d MMMM · EEEE", Turkish)), color = Muted, fontSize = 11.sp, lineHeight = 16.sp, modifier = Modifier.padding(top = 3.dp))
-            }
-            Column(horizontalAlignment = Alignment.End) {
-                Text(now.atZone(zone).format(DateTimeFormatter.ofPattern("HH:mm")), fontSize = 23.sp, lineHeight = 27.sp, fontWeight = FontWeight.SemiBold)
-                Text("YEREL SAAT", color = Muted, fontSize = 8.sp, lineHeight = 11.sp, letterSpacing = 1.5.sp)
-            }
+            Text("7 günlük tahmin", color = Muted, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+            TextButton(onClick = onFullRefresh, enabled = enabled, contentPadding = PaddingValues(horizontal = 4.dp)) { Text("Tümünü güncelle", fontSize = 10.sp) }
         }
-        Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
-                Text(degrees(hour?.temperature), fontSize = 82.sp, fontWeight = FontWeight.Bold, letterSpacing = (-4).sp, lineHeight = 88.sp)
-                Text(condition.description, color = Accent, fontSize = 15.sp, lineHeight = 20.sp, fontWeight = FontWeight.SemiBold)
-            }
-            WeatherGlyph(hour?.weatherCode, hour?.isDay ?: true, Modifier.size(112.dp))
-        }
-        Row(Modifier.fillMaxWidth().padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            MetricTile("Hissedilen", degrees(hour?.apparentTemperature), "", MetricKind.FEELS_LIKE, Modifier.weight(1f))
-            MetricTile("Yağış ihtimali", percent(hour?.precipitationProbability), "", MetricKind.RAIN, Modifier.weight(1f))
-            MetricTile("Rüzgâr", number(hour?.windSpeed), "km/sa", MetricKind.WIND, Modifier.weight(1f))
-        }
-        Row(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            MetricTile("Nem", percent(hour?.humidity), "", MetricKind.HUMIDITY, Modifier.weight(1f))
-            MetricTile("UV indeksi", number(hour?.uvIndex), "", MetricKind.UV, Modifier.weight(1f))
-            MetricTile("Basınç", number(hour?.pressure), "hPa", MetricKind.PRESSURE, Modifier.weight(1f))
+        days.take(if (expanded) 7 else 3).forEach { DayRow(it, today) }
+        if (days.isEmpty()) Text("Kayıtlı günlük tahminin süresi doldu.", fontSize = 12.sp, color = Muted)
+        if (days.size > 3) FilledTonalButton(onClick = { expanded = !expanded }, modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+            colors = ButtonDefaults.filledTonalButtonColors(containerColor = Color.White.copy(alpha = .15f), contentColor = Color.White)) {
+            Text(if (expanded) "Kısalt" else "7 günlük tahmin", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
         }
     }
 }
 
 @Composable
 private fun DayRow(day: DayWeather, today: LocalDate) {
-    Row(Modifier.fillMaxWidth().background(Color.White.copy(alpha = .055f), RoundedCornerShape(20.dp))
-        .border(1.dp, Color.White.copy(alpha = .06f), RoundedCornerShape(20.dp)).padding(horizontal = 16.dp, vertical = 9.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.fillMaxWidth().padding(vertical = 7.dp), verticalAlignment = Alignment.CenterVertically) {
         val date = LocalDate.parse(day.date)
-        Column(Modifier.weight(1f)) {
-            Text(if (date == today) "Bugün" else date.format(DateTimeFormatter.ofPattern("EEEE", Turkish)), fontSize = 14.sp)
-            Text(WeatherCondition.from(day.weatherCode).description, color = Muted, fontSize = 10.sp)
-        }
-        WeatherGlyph(day.weatherCode, modifier = Modifier.size(48.dp))
-        Text(percent(day.precipitationProbability), color = Accent, fontSize = 11.sp, modifier = Modifier.width(42.dp))
-        Text(degrees(day.minimum), color = Muted, modifier = Modifier.width(38.dp))
-        Text(degrees(day.maximum), fontWeight = FontWeight.SemiBold)
+        WeatherGlyph(day.weatherCode, modifier = Modifier.size(34.dp))
+        Spacer(Modifier.width(8.dp))
+        Text(if (date == today) "Bugün" else if (date == today.plusDays(1)) "Yarın" else date.format(DateTimeFormatter.ofPattern("EEE", Turkish)), fontSize = 12.sp,
+            fontWeight = FontWeight.SemiBold, modifier = Modifier.width(48.dp))
+        Text(WeatherCondition.from(day.weatherCode).description, color = Muted, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+        Spacer(Modifier.width(6.dp))
+        Text(degrees(day.maximum), fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+        Text(" / ${degrees(day.minimum)}", color = Muted, fontSize = 13.sp)
     }
 }
 
