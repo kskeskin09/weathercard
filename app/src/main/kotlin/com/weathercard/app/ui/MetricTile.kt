@@ -23,15 +23,15 @@ enum class MetricKind { FEELS_LIKE, RAIN, WIND, HUMIDITY, UV, PRESSURE }
 
 @Composable
 fun MetricTile(label: String, value: String, unit: String, kind: MetricKind, modifier: Modifier = Modifier) {
-    Column(modifier.height(76.dp).background(Color.White.copy(alpha = .07f), RoundedCornerShape(19.dp))
-        .border(1.dp, Color.White.copy(alpha = .1f), RoundedCornerShape(19.dp)).padding(12.dp), verticalArrangement = Arrangement.SpaceBetween) {
+    Column(modifier.height(64.dp).background(Color.White.copy(alpha = .07f), RoundedCornerShape(19.dp))
+        .border(1.dp, Color.White.copy(alpha = .1f), RoundedCornerShape(19.dp)).padding(10.dp), verticalArrangement = Arrangement.SpaceBetween) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
             MetricSymbol(kind, Modifier.size(14.dp))
-            Text(label, color = Color(0xFFC3D8ED), fontSize = 10.sp, maxLines = 1)
+            Text(label, color = Color(0xFFC3D8ED), fontSize = 10.sp, lineHeight = 12.sp, maxLines = 1)
         }
         Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(3.dp)) {
-            Text(value, fontSize = 22.sp, fontWeight = FontWeight.Medium, letterSpacing = (-.6).sp)
-            if (unit.isNotEmpty()) Text(unit, color = Color(0xFFB8D3EB), fontSize = 9.sp, modifier = Modifier.padding(bottom = 4.dp))
+            Text(value, fontSize = 21.sp, lineHeight = 25.sp, fontWeight = FontWeight.Medium, letterSpacing = (-.6).sp)
+            if (unit.isNotEmpty()) Text(unit, color = Color(0xFFB8D3EB), fontSize = 9.sp, lineHeight = 12.sp, modifier = Modifier.padding(bottom = 4.dp))
         }
     }
 }

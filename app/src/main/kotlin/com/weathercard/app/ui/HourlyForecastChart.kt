@@ -65,7 +65,7 @@ fun HourlyForecastChart(hours: List<HourWeather>, currentHour: Long, zone: ZoneI
             Column(Modifier.width(96.dp).semantics(mergeDescendants = true) {
                 contentDescription = "$label, ${local.toLocalDate()}, $temperature, $description, rüzgâr $wind kilometre/saat"
             }, horizontalAlignment = Alignment.CenterHorizontally) {
-                Box(Modifier.fillMaxWidth().height(112.dp)) {
+                Box(Modifier.fillMaxWidth().height(100.dp)) {
                     Canvas(Modifier.fillMaxSize().clipToBounds()) {
                         val w = size.width
                         val centerX = w / 2
@@ -102,13 +102,13 @@ fun HourlyForecastChart(hours: List<HourWeather>, currentHour: Long, zone: ZoneI
                             }
                         }
                     }
-                    Text(temperature, Modifier.align(Alignment.TopCenter).offset(y = (y(index) - 29).dp), fontSize = 21.sp, fontWeight = FontWeight.SemiBold)
+                    Text(temperature, Modifier.align(Alignment.TopCenter).offset(y = (y(index) - 29).dp), fontSize = 21.sp, lineHeight = 25.sp, fontWeight = FontWeight.SemiBold)
                 }
                 WeatherGlyph(hour.weatherCode, hour.isDay ?: true, Modifier.size(48.dp))
-                Text(wind, color = Color(0xFFD0E0EF), fontSize = 13.sp, modifier = Modifier.padding(top = 3.dp))
-                Text("km/sa", color = Color(0xFFABC5DC), fontSize = 9.sp)
-                Text(label, color = if (current) Color.White else Color(0xFFC0D3E5), fontSize = 14.sp, fontWeight = if (current) FontWeight.SemiBold else FontWeight.Normal, modifier = Modifier.padding(top = 9.dp))
-                Text(local.format(DateTimeFormatter.ofPattern("d MMM", locale)), color = Color(0xFF9DB8D2), fontSize = 9.sp, modifier = Modifier.padding(top = 3.dp, bottom = 5.dp))
+                Text(wind, color = Color(0xFFD0E0EF), fontSize = 13.sp, lineHeight = 17.sp, modifier = Modifier.padding(top = 3.dp))
+                Text("km/sa", color = Color(0xFFABC5DC), fontSize = 9.sp, lineHeight = 12.sp)
+                Text(label, color = if (current) Color.White else Color(0xFFC0D3E5), fontSize = 14.sp, lineHeight = 18.sp, fontWeight = if (current) FontWeight.SemiBold else FontWeight.Normal, modifier = Modifier.padding(top = 9.dp))
+                Text(local.format(DateTimeFormatter.ofPattern("d MMM", locale)), color = Color(0xFF9DB8D2), fontSize = 9.sp, lineHeight = 12.sp, modifier = Modifier.padding(top = 3.dp, bottom = 5.dp))
             }
         }
     }

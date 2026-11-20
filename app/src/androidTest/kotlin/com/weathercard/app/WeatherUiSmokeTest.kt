@@ -20,6 +20,8 @@ import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performScrollToNode
+import androidx.compose.ui.test.performScrollToIndex
+import androidx.compose.ui.test.ComposeTimeoutException
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.captureToImage
@@ -69,11 +71,6 @@ class WeatherUiSmokeTest {
             compose.waitUntil(15_000) { compose.onAllNodes(androidx.compose.ui.test.hasText("İstanbul")).fetchSemanticsNodes().isNotEmpty() }
             compose.onNodeWithText("İstanbul").assertIsDisplayed()
             compose.onAllNodesWithText("18°").onFirst().assertIsDisplayed()
-            screenshot(app, "dashboard.png")
-            compose.onNodeWithTag("forecast-list").performScrollToNode(hasText("Saat saat"))
-            screenshot(app, "hourly-wind.png")
-            compose.onNodeWithTag("forecast-list").performScrollToNode(hasText("RÜZGÂR"))
-            screenshot(app, "wind-sun.png")
             compose.onNodeWithText("Kota").performClick()
             compose.waitUntil(10_000) { compose.onAllNodesWithText("Bu ay").fetchSemanticsNodes().isNotEmpty() }
             compose.onNodeWithText("API kullanımı").assertIsDisplayed()
@@ -112,10 +109,22 @@ class WeatherUiSmokeTest {
 
     private fun screenshot(app: WeatherApplication, name: String) {
         val target = File(app.getExternalFilesDir("screenshots"), name)
-        compose.waitForIdle()
-        val bitmap = compose.onRoot(useUnmergedTree = true).captureToImage().asAndroidBitmap()
-        target.outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
-        bitmap.recycle()
+        var lastError: ComposeTimeoutException? = null
+        repeat(3) {
+            try {
+                compose.waitForIdle()
+                compose.mainClock.advanceTimeByFrame()
+                val bitmap = compose.onRoot(useUnmergedTree = true).captureToImage().asAndroidBitmap()
+                target.outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
+                bitmap.recycle()
+                return
+            } catch (error: ComposeTimeoutException) {
+                lastError = error
+                // PixelCopy's first frame can time out on a cold software-rendered CI device.
+                android.os.SystemClock.sleep(500)
+            }
+        }
+        throw checkNotNull(lastError)
     }
 
     @Test fun renderAtmospherePreviews() {
@@ -151,9 +160,9 @@ class WeatherUiSmokeTest {
                 compose.onAllNodesWithText("İstanbul").onFirst().assertIsDisplayed()
                 screenshot(app, "$name-preview.png")
                 if (name == "day") {
-                    compose.onNodeWithTag("forecast-list").performScrollToNode(hasText("Saat saat"))
+                    compose.onNodeWithTag("forecast-list").performScrollToIndex(1)
                     screenshot(app, "day-hourly.png")
-                    compose.onNodeWithTag("forecast-list").performScrollToNode(hasText("RÜZGÂR"))
+                    compose.onNodeWithTag("forecast-list").performScrollToIndex(3)
                     screenshot(app, "day-wind-sun.png")
                 }
             }

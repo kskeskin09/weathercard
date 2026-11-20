@@ -98,7 +98,7 @@ internal fun WeatherScreen(vm: WeatherViewModel = viewModel(), previewNow: Insta
       Box(Modifier.fillMaxSize()) {
         WeatherBackdrop(activeWeather?.weatherCode, daylight, Modifier.fillMaxSize())
         Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()) {
-            Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text("WEATHERCARD", color = Accent, fontSize = 10.sp, letterSpacing = 2.sp, fontWeight = FontWeight.SemiBold)
                 }
@@ -197,23 +197,23 @@ internal fun WeatherScreen(vm: WeatherViewModel = viewModel(), previewNow: Insta
 @Composable
 private fun CurrentCard(place: Place, hour: HourWeather?, now: Instant, zone: ZoneId) {
     val condition = WeatherCondition.from(hour?.weatherCode, hour?.isDay ?: true)
-    Column(Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 4.dp)) {
+    Column(Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 2.dp)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
-                Text(place.name.substringBefore(","), fontSize = 24.sp, fontWeight = FontWeight.Medium, maxLines = 1)
-                Text(now.atZone(zone).format(DateTimeFormatter.ofPattern("d MMMM · EEEE", Turkish)), color = Muted, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp))
+                Text(place.name.substringBefore(","), fontSize = 23.sp, lineHeight = 27.sp, fontWeight = FontWeight.Medium, maxLines = 1)
+                Text(now.atZone(zone).format(DateTimeFormatter.ofPattern("d MMMM · EEEE", Turkish)), color = Muted, fontSize = 11.sp, lineHeight = 16.sp, modifier = Modifier.padding(top = 3.dp))
             }
             Column(horizontalAlignment = Alignment.End) {
-                Text(now.atZone(zone).format(DateTimeFormatter.ofPattern("HH:mm")), fontSize = 24.sp, fontWeight = FontWeight.Light)
-                Text("YEREL SAAT", color = Muted, fontSize = 8.sp, letterSpacing = 1.5.sp)
+                Text(now.atZone(zone).format(DateTimeFormatter.ofPattern("HH:mm")), fontSize = 23.sp, lineHeight = 27.sp, fontWeight = FontWeight.Light)
+                Text("YEREL SAAT", color = Muted, fontSize = 8.sp, lineHeight = 11.sp, letterSpacing = 1.5.sp)
             }
         }
-        Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
-                Text(degrees(hour?.temperature), fontSize = 94.sp, fontWeight = FontWeight.Light, letterSpacing = (-6).sp, lineHeight = 100.sp)
-                Text(condition.description, color = Accent, fontSize = 16.sp, fontWeight = FontWeight.Medium)
+                Text(degrees(hour?.temperature), fontSize = 82.sp, fontWeight = FontWeight.Light, letterSpacing = (-5).sp, lineHeight = 88.sp)
+                Text(condition.description, color = Accent, fontSize = 15.sp, lineHeight = 20.sp, fontWeight = FontWeight.Medium)
             }
-            WeatherGlyph(hour?.weatherCode, hour?.isDay ?: true, Modifier.size(136.dp))
+            WeatherGlyph(hour?.weatherCode, hour?.isDay ?: true, Modifier.size(112.dp))
         }
         Row(Modifier.fillMaxWidth().padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             MetricTile("Hissedilen", degrees(hour?.apparentTemperature), "", MetricKind.FEELS_LIKE, Modifier.weight(1f))
