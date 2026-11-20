@@ -53,16 +53,15 @@ UI smoke testi ayrı workflow ile Android emülatöründe çalıştırılır; ik
 
 ## Geliştirme
 
-Android Studio ile kök klasörü aç. JDK 17, Android SDK 35 ve Gradle Wrapper 8.11.1 kullanılır.
-Yerel SDK yolu `local.properties` içinde tutulur; Git'e eklenmez.
+Android Studio ile kök klasörü düzenleyebilirsin. Derleme araçları GitHub Actions üzerinde JDK 17, Android SDK 35 ve Gradle Wrapper 8.11.1 olarak sabitlenmiştir.
+Derlemeler, testler ve APK üretimi yerelde çalıştırılmaz.
 
 ```sh
-./gradlew :core:test :app:testDebugUnitTest :app:lintDebug :app:assembleDebug
+gh workflow run android.yml --ref main --repo kskeskin09/weathercard
+gh workflow run ui-smoke.yml --ref main --repo kskeskin09/weathercard
 ```
 
-Windows: `gradlew.bat` kullan. Derlenen APK: `app/build/outputs/apk/debug/app-debug.apk`.
-Normal geliştirmede derlemeleri GitHub Actions üzerinden çalıştır. Yukarıdaki komutlar isteğe bağlı yerel geliştirme içindir.
-Telefona kurulacak çıktı debug artifact yerine nightly sayfasındaki imzalı release APK'sıdır.
+Telefona kurulacak çıktı nightly sayfasındaki imzalı release APK'sıdır.
 
 ## Yapı
 

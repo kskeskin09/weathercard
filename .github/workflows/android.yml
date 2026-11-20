@@ -31,7 +31,7 @@ jobs:
         shell: bash
         run: |
           BASE_VERSION=$(sed -n 's/^weatherVersionName=//p' gradle.properties | tr -d '\r')
-          VERSION_NAME="${BASE_VERSION}-nightly.$(date -u +%Y%m%d).${GITHUB_RUN_NUMBER}"
+          VERSION_NAME="${BASE_VERSION}-nightly.$(TZ=Europe/Istanbul date +%Y%m%d).${GITHUB_RUN_NUMBER}"
           VERSION_CODE=$((100000 + GITHUB_RUN_NUMBER))
           echo "name=$VERSION_NAME" >> "$GITHUB_OUTPUT"
           echo "code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
@@ -48,7 +48,7 @@ jobs:
       - name: Test, lint and build APK
         env:
           WEATHERCARD_KEYSTORE: ${{ github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && format('{0}/weathercard-nightly.jks', runner.temp) || '' }}
-          WEATHERCARD_SIGNING_PASSWORD: ${{ secrets.ANDROID_SIGNING_PASSWORD }}
+          WEATHERCARD_SIGNING_PASSWORD: ${{ github.event_name != 'pull_request' && secrets.ANDROID_SIGNING_PASSWORD || '' }}
           VERSION_NAME: ${{ steps.version.outputs.name }}
           VERSION_CODE: ${{ steps.version.outputs.code }}
         run: |
