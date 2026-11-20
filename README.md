@@ -5,7 +5,8 @@ Android 8.0 (API 26) ve üzeri cihazları hedefler. Open-Meteo ücretsiz uç nok
 
 ## İlk sürüm
 
-- Güncel saate ait tahmin, 48 saatlik görünüm ve 7 günlük tahmin.
+- Güncel saate ait tahmin, önbellekteki tüm saatler için yatay kaydırılabilen sıcaklık eğrisi ve 7 günlük tahmin.
+- Rüzgâr yönü/hızı ve pusula; gün doğumu/batımı saatleri ile güneşin gün içindeki konumunu gösteren eğri.
 - Şehir/ilçe araması; yaklaşık konum ve kullanıcının izin vermesi halinde tek seferlik kesin GPS konumu.
 - Hava koşuluna ve gündüz/geceye göre değişen tam ekran atmosfer; yerel saat, büyük sıcaklık gösterimi ve yarı saydam gösterge kartları.
 - Google konum servisi boş sonuç verdiğinde Android ağ/GPS sağlayıcılarıyla devam etme, güncel kayıtlı konumu kullanma ve açık ayar yönlendirmeleri.
@@ -52,14 +53,14 @@ Private repoya erişimi olan GitHub hesabınla telefonda giriş yap, **weatherca
 Android isterse kullandığın tarayıcı için bilinmeyen kaynaklardan uygulama yükleme izni ver.
 APK'lar aynı imzalama anahtarını kullanır; sonraki nightly sürümleri mevcut uygulamanın üzerine kurulabilir.
 
-Her başarılı `main` push'u ve elle başlatılan ana dal derlemesi aynı `nightly` prerelease ve iki sabit dosyayı günceller.
+Her `main` push'u test/derleme yapıp imzalı aday APK üretir; **otomatik release yayımlamaz**. Önce gerçek ekran görüntüleri kullanıcıya gösterilir. Kullanıcı onayından sonra workflow elle `publish_nightly=true` ile çalıştırılır ve aynı `nightly` prerelease ile iki sabit dosya güncellenir.
 Her commit için yeni release oluşturulmaz. Nightly yalnızca **deneme sürümleri** içindir; kullanıcı bir sürümü onayladığında ayrıca SemVer etiketli ana/stable release hazırlanır. Stable release otomatik yayımlanmaz. Otomatik gece takvimi tanımlı değildir.
 Sürüm adı `0.1.0-nightly.YYYYMMDD.N`, Android sürüm kodu `100000 + GITHUB_RUN_NUMBER` şeklindedir.
 Taban SemVer sürümü `gradle.properties` içindedir; sürüm adı uygulamanın alt kısmında da gösterilir.
 
 Derleme, test, lint, imza doğrulaması ve yayınlama **GitHub Actions** içinde yapılır.
 İmzalama anahtarı/parolası `ANDROID_KEYSTORE_BASE64` ve `ANDROID_SIGNING_PASSWORD` GitHub Secrets alanındadır; kodda tutulmaz.
-PR'lar test edilir ancak nightly yayımlamaz. Bir hata varsa mevcut nightly değişmez.
+PR'lar ve push'lar test edilir ancak nightly yayımlamaz. Yayın için görsel onayı ve elle başlatılan yayın seçeneği gerekir.
 UI smoke testi ayrı workflow ile Android emülatöründe çalıştırılır; ikon ve ekran görüntülerini artifact olarak saklar.
 
 ## Geliştirme

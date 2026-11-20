@@ -18,6 +18,12 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.performScrollToNode
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.captureToImage
+import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.foundation.Image
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
@@ -64,6 +70,10 @@ class WeatherUiSmokeTest {
             compose.onNodeWithText("İstanbul").assertIsDisplayed()
             compose.onAllNodesWithText("18°").onFirst().assertIsDisplayed()
             screenshot(app, "dashboard.png")
+            compose.onNodeWithTag("forecast-list").performScrollToNode(hasText("Saat saat"))
+            screenshot(app, "hourly-wind.png")
+            compose.onNodeWithTag("forecast-list").performScrollToNode(hasText("RÜZGÂR"))
+            screenshot(app, "wind-sun.png")
             compose.onNodeWithText("Kota").performClick()
             compose.waitUntil(10_000) { compose.onAllNodesWithText("Bu ay").fetchSemanticsNodes().isNotEmpty() }
             compose.onNodeWithText("API kullanımı").assertIsDisplayed()
@@ -102,8 +112,51 @@ class WeatherUiSmokeTest {
 
     private fun screenshot(app: WeatherApplication, name: String) {
         val target = File(app.getExternalFilesDir("screenshots"), name)
-        val bitmap = InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot()
+        compose.waitForIdle()
+        val bitmap = compose.onRoot(useUnmergedTree = true).captureToImage().asAndroidBitmap()
         target.outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
         bitmap.recycle()
+    }
+
+    @Test fun renderAtmospherePreviews() {
+        val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as WeatherApplication
+        val zone = ZoneId.of("Europe/Istanbul")
+        val date = java.time.LocalDate.now(zone)
+        val cases = listOf(Triple("day", 0, 12), Triple("night", 0, 23), Triple("rain", 63, 14), Triple("snow", 73, 10))
+        cases.forEach { (name, code, displayHour) ->
+            val reference = date.atTime(displayHour, 0).atZone(zone).toInstant()
+            val start = date.atStartOfDay(zone).toEpochSecond()
+            val base = when (name) { "snow" -> 2.0; "night" -> 12.0; "rain" -> 16.0; else -> 21.0 }
+            val hours = (0..167).map { i ->
+                val time = start + i * 3600
+                val localHour = Instant.ofEpochSecond(time).atZone(zone).hour
+                HourWeather(time, base + kotlin.math.sin(i / 4.0) * 3, base - 1, 68.0,
+                    if (code >= 60) 80.0 else 10.0, if (code >= 60) 0.8 else 0.0, code, 40.0,
+                    1015.0, 10000.0, 16.7, 270.0, 25.0, if (localHour in 8..17) 3.0 else 0.0, localHour in 8..17)
+            }
+            val days = (0..6).map { i ->
+                val day = date.plusDays(i.toLong())
+                DayWeather(day.toString(), code, base - 4, base + 3, 20.0, 0.2, 16.7,
+                    day.atTime(7, 56).atZone(zone).toEpochSecond(), day.atTime(17, 41).atZone(zone).toEpochSecond(), 3.0)
+            }
+            runBlocking {
+                com.weathercard.app.data.DiskForecastStore(File(app.filesDir, "forecasts")).write(
+                    WeatherSnapshot(Place("İstanbul", 41.0082, 28.9784), "Europe/Istanbul", hours, days, reference.epochSecond)
+                )
+            }
+            app.getSharedPreferences("settings", 0).edit().clear().commit()
+            ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+                scenario.onActivity { activity -> activity.setContent { WeatherCardTheme { WeatherScreen(previewNow = reference) } } }
+                compose.waitUntil(15_000) { compose.onAllNodesWithText("İstanbul").fetchSemanticsNodes().isNotEmpty() }
+                compose.onAllNodesWithText("İstanbul").onFirst().assertIsDisplayed()
+                screenshot(app, "$name-preview.png")
+                if (name == "day") {
+                    compose.onNodeWithTag("forecast-list").performScrollToNode(hasText("Saat saat"))
+                    screenshot(app, "day-hourly.png")
+                    compose.onNodeWithTag("forecast-list").performScrollToNode(hasText("RÜZGÂR"))
+                    screenshot(app, "day-wind-sun.png")
+                }
+            }
+        }
     }
 }

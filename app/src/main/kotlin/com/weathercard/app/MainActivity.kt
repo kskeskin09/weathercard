@@ -12,21 +12,19 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -37,6 +35,9 @@ import com.weathercard.app.ui.UsageScreen
 import com.weathercard.app.ui.WeatherBackdrop
 import com.weathercard.app.ui.MetricTile
 import com.weathercard.app.ui.MetricKind
+import com.weathercard.app.ui.HourlyForecastChart
+import com.weathercard.app.ui.WindCard
+import com.weathercard.app.ui.SunTimesCard
 import com.weathercard.core.*
 import kotlinx.coroutines.delay
 import java.time.Instant
@@ -58,17 +59,22 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            MaterialTheme(colorScheme = darkColorScheme(
-                primary = Accent, background = Ink, surface = Panel,
-                onBackground = Color(0xFFF2F5FC), onSurface = Color(0xFFF2F5FC),
-            )) { WeatherScreen() }
+            WeatherCardTheme { WeatherScreen() }
         }
     }
 }
 
+@Composable
+internal fun WeatherCardTheme(content: @Composable () -> Unit) {
+    MaterialTheme(colorScheme = darkColorScheme(
+        primary = Accent, background = Ink, surface = Panel,
+        onBackground = Color(0xFFF2F5FC), onSurface = Color(0xFFF2F5FC),
+    ), content = content)
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun WeatherScreen(vm: WeatherViewModel = viewModel()) {
+internal fun WeatherScreen(vm: WeatherViewModel = viewModel(), previewNow: Instant? = null) {
     val state by vm.state.collectAsStateWithLifecycle()
     var showSearch by remember { mutableStateOf(false) }
     var confirmFull by remember { mutableStateOf(false) }
@@ -82,8 +88,8 @@ private fun WeatherScreen(vm: WeatherViewModel = viewModel()) {
         if (permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true || permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true) vm.useLocation() else vm.permissionDenied()
     }
     // Advancing the display clock never makes a network request.
-    var now by remember { mutableStateOf(Instant.now()) }
-    LaunchedEffect(Unit) { while (true) { now = Instant.now(); delay(30_000) } }
+    var now by remember(previewNow) { mutableStateOf(previewNow ?: Instant.now()) }
+    LaunchedEffect(previewNow) { if (previewNow == null) while (true) { now = Instant.now(); delay(30_000) } }
     val activeZone = state.snapshot?.timezone?.let(ZoneId::of) ?: ZoneId.systemDefault()
     val activeHour = now.atZone(activeZone).truncatedTo(ChronoUnit.HOURS).toEpochSecond()
     val activeWeather = state.snapshot?.hours?.find { it.time == activeHour }
@@ -102,7 +108,7 @@ private fun WeatherScreen(vm: WeatherViewModel = viewModel()) {
             }
             PullToRefreshBox(isRefreshing = state.busy, onRefresh = vm::refresh, modifier = Modifier.weight(1f)) {
                 LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier.fillMaxSize().testTag("forecast-list"),
                     contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 28.dp),
                     verticalArrangement = Arrangement.spacedBy(14.dp),
                 ) {
@@ -132,28 +138,26 @@ private fun WeatherScreen(vm: WeatherViewModel = viewModel()) {
                         val zone = ZoneId.of(snapshot.timezone)
                         val hour = now.atZone(zone).truncatedTo(ChronoUnit.HOURS).toEpochSecond()
                         val current = snapshot.hours.find { it.time == hour }
-                        val visibleHours = snapshot.hours.filter { it.time >= hour }.take(48)
                         item { CurrentCard(snapshot.place, current, now, zone) }
                         item {
                             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                                 Text("Saat saat", fontSize = 20.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
-                                Text("48 SAAT", color = Muted, fontSize = 10.sp, letterSpacing = 2.sp)
+                                Text("${snapshot.hours.size} SAAT", color = Muted, fontSize = 10.sp, letterSpacing = 2.sp)
                                 TextButton(onClick = vm::refresh, enabled = !state.busy) { Text("Yenile ↻", fontSize = 12.sp) }
                             }
                         }
                         item {
-                            if (visibleHours.isEmpty()) Text("Saatlik tahminin süresi doldu. 7 günlük tahmini yeniden yükleyebilirsin.", color = Muted)
-                            else Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                                visibleHours.forEach { HourCard(it, zone, it.time == hour) }
-                            }
+                            key(snapshot.place.cacheKey) { HourlyForecastChart(snapshot.hours, hour, zone) }
                         }
+                        val today = now.atZone(zone).toLocalDate()
+                        item { WindCard(current) }
+                        item { SunTimesCard(snapshot.days.find { it.date == today.toString() }, now, zone) }
                         item {
                             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                                 Text("7 günlük tahmin", fontSize = 20.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
                                 TextButton(onClick = { confirmFull = true }, enabled = !state.busy) { Text("Tümünü güncelle", fontSize = 11.sp) }
                             }
                         }
-                        val today = now.atZone(zone).toLocalDate()
                         val days = snapshot.days.filter { !LocalDate.parse(it.date).isBefore(today) }
                         items(days, key = { it.date }) { DayRow(it, today) }
                         item {
@@ -221,17 +225,6 @@ private fun CurrentCard(place: Place, hour: HourWeather?, now: Instant, zone: Zo
             MetricTile("UV indeksi", number(hour?.uvIndex), "", MetricKind.UV, Modifier.weight(1f))
             MetricTile("Basınç", number(hour?.pressure), "hPa", MetricKind.PRESSURE, Modifier.weight(1f))
         }
-    }
-}
-
-@Composable
-private fun HourCard(hour: HourWeather, zone: ZoneId, current: Boolean) {
-    Column(Modifier.width(76.dp).background(Color.White.copy(alpha = if (current) .18f else .06f), RoundedCornerShape(24.dp))
-        .border(1.dp, Color.White.copy(alpha = if (current) .25f else .08f), RoundedCornerShape(24.dp)).padding(vertical = 14.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(if (current) "Şimdi" else Instant.ofEpochSecond(hour.time).atZone(zone).format(DateTimeFormatter.ofPattern("HH:mm")), color = if (current) Color.White else Muted, fontSize = 12.sp)
-        WeatherGlyph(hour.weatherCode, hour.isDay ?: true, Modifier.size(53.dp).padding(top = 5.dp))
-        Text(degrees(hour.temperature), fontSize = 20.sp, fontWeight = FontWeight.Medium)
-        Text(percent(hour.precipitationProbability), color = Accent, fontSize = 11.sp, modifier = Modifier.padding(top = 5.dp))
     }
 }
 
