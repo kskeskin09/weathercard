@@ -29,7 +29,7 @@ class WeatherRepository(
     /** Only these six timestamps change; daily forecasts and full-fetch age stay intact. */
     suspend fun refreshSixHours(place: Place): WeatherSnapshot = mutex.withLock {
         val cached = store.read(place) ?: return@withLock fetchAndStore(place)
-        val window = HourWindow.at(clock.instant())
+        val window = HourWindow.at(clock.instant(), cached.timezone)
         val updates = api.sixHours(place, window)
         require(updates.size == 6 && updates.map { it.time }.toSet() == window.timestamps) {
             "Altı saatlik yanıt eksik veya istenen zaman aralığının dışında."

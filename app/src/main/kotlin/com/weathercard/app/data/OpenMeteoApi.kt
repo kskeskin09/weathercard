@@ -11,7 +11,7 @@ import org.json.JSONObject
 import java.io.IOException
 import java.time.Clock
 import java.time.Instant
-import java.time.ZoneOffset
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.concurrent.TimeUnit
 
@@ -84,9 +84,9 @@ class OpenMeteoApi(private val clock: Clock = Clock.systemUTC()) : WeatherApi {
             .addQueryParameter("daily", dailyFields.joinToString(",")).build()
 
         internal fun sixHourUrl(place: Place, window: HourWindow): HttpUrl {
-            val formatter = DateTimeFormatter.ofPattern("uuuu-MM-dd'T'HH:mm").withZone(ZoneOffset.UTC)
+            val formatter = DateTimeFormatter.ofPattern("uuuu-MM-dd'T'HH:mm").withZone(ZoneId.of(window.timezone))
             return base(place)
-                .addQueryParameter("timezone", "GMT")
+                .addQueryParameter("timezone", window.timezone)
                 .addQueryParameter("start_hour", formatter.format(window.start))
                 .addQueryParameter("end_hour", formatter.format(window.endInclusive))
                 .build()

@@ -2,6 +2,7 @@ package com.weathercard.core
 
 import kotlinx.serialization.Serializable
 import java.time.Instant
+import java.time.ZoneId
 import java.time.temporal.ChronoUnit
 
 @Serializable
@@ -57,12 +58,17 @@ data class WeatherSnapshot(
     val sixHoursFetchedAt: Long? = null,
 )
 
-data class HourWindow(val start: Instant) {
-    init { require(start == start.truncatedTo(ChronoUnit.HOURS)) }
+data class HourWindow(val start: Instant, val timezone: String = "GMT") {
+    init {
+        val local = start.atZone(ZoneId.of(timezone))
+        require(local == local.truncatedTo(ChronoUnit.HOURS))
+    }
     val endInclusive: Instant get() = start.plus(5, ChronoUnit.HOURS)
     val timestamps: Set<Long> get() = (0L..5L).map { start.plus(it, ChronoUnit.HOURS).epochSecond }.toSet()
     companion object {
-        fun at(now: Instant) = HourWindow(now.truncatedTo(ChronoUnit.HOURS))
+        fun at(now: Instant, timezone: String = "GMT") = HourWindow(
+            now.atZone(ZoneId.of(timezone)).truncatedTo(ChronoUnit.HOURS).toInstant(), timezone,
+        )
     }
 }
 

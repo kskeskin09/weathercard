@@ -104,7 +104,7 @@ private fun WeatherScreen(vm: WeatherViewModel = viewModel()) {
                         }
                     } else {
                         val zone = ZoneId.of(snapshot.timezone)
-                        val hour = now.truncatedTo(ChronoUnit.HOURS).epochSecond
+                        val hour = now.atZone(zone).truncatedTo(ChronoUnit.HOURS).toEpochSecond()
                         val current = snapshot.hours.find { it.time == hour }
                         val visibleHours = snapshot.hours.filter { it.time >= hour }.take(48)
                         item { CurrentCard(snapshot.place, current, now, zone) }

@@ -35,7 +35,7 @@ class WeatherRepositoryTest {
         val store = MemoryStore(original)
         val api = FakeApi()
         val updated = WeatherRepository(api, store, clock).refreshSixHours(place)
-        val window = HourWindow.at(now)
+        val window = HourWindow.at(now, "Europe/Istanbul")
         assertEquals(6, window.timestamps.size)
         assertEquals(Instant.parse("2026-11-21T03:00:00Z"), window.endInclusive)
         assertEquals(0, api.fullCalls)
@@ -90,7 +90,7 @@ class WeatherRepositoryTest {
         WeatherRepository(api, store, clock).open(place)
         WeatherRepository(api, store, clock).refreshSixHours(place)
         assertEquals(0, api.fullCalls)
-        assertEquals(1, store.value!!.fullFetchedAt)
+        assertEquals(1L, store.value!!.fullFetchedAt)
     }
 
     @Test fun `explicit complete reload updates both hourly and daily cache`() = runTest {
@@ -108,6 +108,17 @@ class WeatherRepositoryTest {
         val json = kotlinx.serialization.json.Json
         val encoded = json.encodeToString(WeatherSnapshot.serializer(), source)
         assertEquals(source, json.decodeFromString(WeatherSnapshot.serializer(), encoded))
+    }
+
+    @Test fun `half hour timezone aligns refresh to cached local hours`() = runTest {
+        val localStart = HourWindow.at(now, "Asia/Kolkata").start.epochSecond
+        val original = snapshot().copy(timezone = "Asia/Kolkata", hours = (0..167).map { hour(localStart + (it - 24) * 3600, 10.0) })
+        val store = MemoryStore(original)
+        val api = FakeApi()
+        val updated = WeatherRepository(api, store, clock).refreshSixHours(place)
+        assertEquals(1800L, api.requestedWindow!!.start.epochSecond % 3600)
+        assertEquals(original.hours.size, updated.hours.size)
+        assertEquals(6, updated.hours.count { it.temperature == 99.0 })
     }
 
     private fun snapshot(p: Place = place): WeatherSnapshot {

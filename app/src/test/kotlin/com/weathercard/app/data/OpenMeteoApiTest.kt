@@ -30,6 +30,14 @@ class OpenMeteoApiTest {
         assertNotNull(url.queryParameter("daily"))
     }
 
+    @Test fun `partial query uses the same local hour grid as full response`() {
+        val window = HourWindow.at(Instant.parse("2026-11-20T22:35:00Z"), "Asia/Kolkata")
+        val url = OpenMeteoApi.sixHourUrl(place, window)
+        assertEquals("Asia/Kolkata", url.queryParameter("timezone"))
+        assertEquals("2026-11-21T04:00", url.queryParameter("start_hour"))
+        assertEquals("2026-11-21T09:00", url.queryParameter("end_hour"))
+    }
+
     @Test fun `null measurements stay unknown instead of silently becoming zero`() {
         val fields = OpenMeteoApi.hourlyFields.joinToString(",") { "\"$it\":[null]" }
         val response = JSONObject("{\"hourly\":{\"time\":[1795212000],$fields}}")
