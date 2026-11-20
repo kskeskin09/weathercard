@@ -10,6 +10,7 @@
 - Önbellek diskte ve konuma göre ayrılmış olmalı. Yaklaşık konumla çalışmayı destekle; kullanıcı kesin konum izni verirse tek seferlik GPS de kullanılabilir. İzin yalnızca kullanım sırasındadır; arka plan takibi ekleme.
 - WMO kodlarının tamamına uygun, çevrimdışı çalışan vektör ikonları ve erişilebilir açıklamalarını koru.
 - Tipografi gömülü Inter ailesidir; kullanıcının referansı gibi kalın sans-serif başlıklar ve değerler kullan. Küçük açıklamaların okunabilirliğini koru; font lisansını paketle.
+- Kullanıcı doğrudan nightly yayımlanmasını isterse bu onaydır; ayrıca görsel onayı isteme. Tercihen `publish-nightly.yml` ve başarılı aday koşusunun ID'siyle mevcut imzalı APK'yı yeniden derlemeden yayımla. Derleme/test hatalarını yayımlama.
 - Modern tam ekran arka planı mevcut saat/hava koşulu ve gündüz/geceye göre değişir. Üst bölümde saat, hava durumu, derece, hissedilen, yağış ihtimali, rüzgâr, nem ve UV görünür. Kota sayacı yalnızca bu cihazın tahminidir; sağlayıcının kesin kalan kotası gibi sunma.
 - Alt bölümde indirilen tüm saatleri kronolojik sırayla içeren kaydırılabilir sıcaklık eğrisi, her saatin hava ikonu/rüzgârı/saati bulunur. İlk görünüm mevcut saate kayar; en son saat en sağdadır. Altında yuvarlatılmış rüzgâr/pusula ve gün doğumu/batımı eğrisi kartları bulunur.
 - Open-Meteo atfını ve ticari olmayan ücretsiz kullanım koşulunu koru. Her kullanıcıya ayrı ücretsiz kota garantisi verme.

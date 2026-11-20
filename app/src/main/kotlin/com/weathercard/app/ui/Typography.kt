@@ -7,12 +7,13 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.text.font.FontWeight
 import com.weathercard.app.R
+import androidx.compose.ui.unit.sp
 
 @OptIn(ExperimentalTextApi::class)
 private val Inter = FontFamily(
     *listOf(400, 500, 600, 700, 800).map { weight ->
         Font(R.font.inter_variable, weight = FontWeight(weight), variationSettings = FontVariation.Settings(
-            FontVariation.weight(weight), FontVariation.opticalSizing(24f),
+            FontVariation.weight(weight), FontVariation.opticalSizing(24.sp),
         ))
     }.toTypedArray()
 )

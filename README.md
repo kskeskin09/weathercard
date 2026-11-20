@@ -57,6 +57,7 @@ APK'lar aynı imzalama anahtarını kullanır; sonraki nightly sürümleri mevcu
 
 Her `main` push'u test/derleme yapıp imzalı aday APK üretir; **otomatik release yayımlamaz**. Önce gerçek ekran görüntüleri kullanıcıya gösterilir. Kullanıcı onayından sonra workflow elle `publish_nightly=true` ile çalıştırılır ve aynı `nightly` prerelease ile iki sabit dosya güncellenir.
 Her commit için yeni release oluşturulmaz. Nightly yalnızca **deneme sürümleri** içindir; kullanıcı bir sürümü onayladığında ayrıca SemVer etiketli ana/stable release hazırlanır. Stable release otomatik yayımlanmaz. Otomatik gece takvimi tanımlı değildir.
+Kullanıcı doğrudan nightly istediğinde `publish-nightly.yml`, başarılı kontrol koşusunun imzalı aday APK'sını yeniden derlemeden yayımlar. Böylece görsel üretiminden sonra ikinci bir Android derlemesi gerekmez.
 Sürüm adı `0.1.0-nightly.YYYYMMDD.N`, Android sürüm kodu `100000 + GITHUB_RUN_NUMBER` şeklindedir.
 Taban SemVer sürümü `gradle.properties` içindedir; sürüm adı uygulamanın alt kısmında da gösterilir.
 

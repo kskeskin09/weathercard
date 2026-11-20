@@ -1,0 +1,63 @@
+name: Publish tested APK without rebuilding
+on:
+  workflow_dispatch:
+    inputs:
+      candidate_run_id:
+        description: 'Başarılı Android checks koşusunun sayısal ID değeri'
+        type: string
+        required: true
+permissions:
+  contents: write
+  actions: read
+concurrency:
+  group: nightly-publication
+  cancel-in-progress: false
+jobs:
+  publish:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      GH_TOKEN: ${{ github.token }}
+      CANDIDATE_RUN: ${{ inputs.candidate_run_id }}
+    steps:
+      - name: Validate tested source and download existing signed APK
+        shell: bash
+        run: |
+          [[ "$CANDIDATE_RUN" =~ ^[0-9]+$ ]]
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$CANDIDATE_RUN" > "$RUNNER_TEMP/candidate.json"
+          jq -e --arg repo "$GITHUB_REPOSITORY" '.conclusion == "success" and .head_branch == "main" and .head_repository.full_name == $repo and .path == ".github/workflows/android.yml" and .event != "pull_request"' "$RUNNER_TEMP/candidate.json"
+          gh run view "$CANDIDATE_RUN" --repo "$GITHUB_REPOSITORY" --json jobs | jq -e 'any(.jobs[].steps[]; .name == "Verify APK signature and prepare download" and .conclusion == "success")'
+          gh run download "$CANDIDATE_RUN" --repo "$GITHUB_REPOSITORY" --pattern 'weathercard-candidate-*' --dir downloaded
+          mapfile -t APKS < <(find downloaded -type f -name weathercard-nightly.apk)
+          test "${#APKS[@]}" -eq 1
+          APK_DIR=$(dirname "${APKS[0]}")
+          (cd "$APK_DIR" && sha256sum --check weathercard-nightly.apk.sha256)
+          mkdir dist
+          cp "$APK_DIR/weathercard-nightly.apk" "$APK_DIR/weathercard-nightly.apk.sha256" dist/
+          ARTIFACT_NAME=$(basename "$APK_DIR")
+          echo "VERSION_NAME=${ARTIFACT_NAME#weathercard-candidate-}" >> "$GITHUB_ENV"
+          echo "SOURCE_SHA=$(jq -r '.head_sha' "$RUNNER_TEMP/candidate.json")" >> "$GITHUB_ENV"
+          echo "VERSION_CODE=$((100000 + $(jq -r '.run_number' "$RUNNER_TEMP/candidate.json")))" >> "$GITHUB_ENV"
+      - name: Publish the same APK to the single nightly release
+        shell: bash
+        run: |
+          cat > "$RUNNER_TEMP/notes.md" <<EOF
+          Android telefonundan **weathercard-nightly.apk** dosyasını indirip aç.
+
+          - Sürüm: **$VERSION_NAME** (kod: $VERSION_CODE)
+          - Android 8.0 ve üzeri
+          - Kaynak commit: $SOURCE_SHA
+          - Sabit imza: mevcut nightly üzerine kurulabilir.
+          - Test edilmiş aday APK yeniden derlenmeden yayımlandı.
+          - Private repo: telefonda erişimi olan GitHub hesabınla giriş yapmalısın.
+
+          Bu bir deneme sürümüdür. Ana/stable release ayrıca karar verdiğinde hazırlanır.
+          EOF
+          if gh release view nightly --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            gh release upload nightly dist/weathercard-nightly.apk dist/weathercard-nightly.apk.sha256 --clobber --repo "$GITHUB_REPOSITORY"
+            gh api --method PATCH "repos/$GITHUB_REPOSITORY/git/refs/tags/nightly" -f sha="$SOURCE_SHA" -F force=true
+            gh release edit nightly --title "WeatherCard Nightly" --notes-file "$RUNNER_TEMP/notes.md" --prerelease --repo "$GITHUB_REPOSITORY"
+          else
+            gh release create nightly dist/weathercard-nightly.apk dist/weathercard-nightly.apk.sha256 --target "$SOURCE_SHA" --title "WeatherCard Nightly" --notes-file "$RUNNER_TEMP/notes.md" --prerelease --repo "$GITHUB_REPOSITORY"
+          fi
