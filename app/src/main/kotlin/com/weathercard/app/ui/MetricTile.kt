@@ -30,7 +30,7 @@ fun MetricTile(label: String, value: String, unit: String, kind: MetricKind, mod
             Text(label, color = Color(0xFFC3D8ED), fontSize = 10.sp, lineHeight = 12.sp, maxLines = 1)
         }
         Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(3.dp)) {
-            Text(value, fontSize = 21.sp, lineHeight = 25.sp, fontWeight = FontWeight.Medium, letterSpacing = (-.6).sp)
+            Text(value, fontSize = 21.sp, lineHeight = 25.sp, fontWeight = FontWeight.Bold, letterSpacing = (-.6).sp)
             if (unit.isNotEmpty()) Text(unit, color = Color(0xFFB8D3EB), fontSize = 9.sp, lineHeight = 12.sp, modifier = Modifier.padding(bottom = 4.dp))
         }
     }

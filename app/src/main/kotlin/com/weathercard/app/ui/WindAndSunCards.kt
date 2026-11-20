@@ -41,7 +41,7 @@ fun WindCard(hour: HourWeather?, modifier: Modifier = Modifier) {
     Row(modifier.glassCard().padding(20.dp), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("RÜZGÂR", color = Quiet, fontSize = 10.sp, letterSpacing = 2.sp)
-            Text(name, fontSize = 25.sp, fontWeight = FontWeight.Medium)
+            Text(name, fontSize = 25.sp, fontWeight = FontWeight.Bold)
             Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
                 Text(speed, fontSize = 30.sp, fontWeight = FontWeight.SemiBold)
                 Text("km/sa", color = Quiet, fontSize = 12.sp, modifier = Modifier.padding(bottom = 5.dp))

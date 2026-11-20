@@ -38,6 +38,7 @@ import com.weathercard.app.ui.MetricKind
 import com.weathercard.app.ui.HourlyForecastChart
 import com.weathercard.app.ui.WindCard
 import com.weathercard.app.ui.SunTimesCard
+import com.weathercard.app.ui.WeatherTypography
 import com.weathercard.core.*
 import kotlinx.coroutines.delay
 import java.time.Instant
@@ -69,7 +70,7 @@ internal fun WeatherCardTheme(content: @Composable () -> Unit) {
     MaterialTheme(colorScheme = darkColorScheme(
         primary = Accent, background = Ink, surface = Panel,
         onBackground = Color(0xFFF2F5FC), onSurface = Color(0xFFF2F5FC),
-    ), content = content)
+    ), typography = WeatherTypography, content = content)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -200,18 +201,18 @@ private fun CurrentCard(place: Place, hour: HourWeather?, now: Instant, zone: Zo
     Column(Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 2.dp)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
-                Text(place.name.substringBefore(","), fontSize = 23.sp, lineHeight = 27.sp, fontWeight = FontWeight.Medium, maxLines = 1)
+                Text(place.name.substringBefore(","), fontSize = 23.sp, lineHeight = 27.sp, fontWeight = FontWeight.Bold, maxLines = 1)
                 Text(now.atZone(zone).format(DateTimeFormatter.ofPattern("d MMMM · EEEE", Turkish)), color = Muted, fontSize = 11.sp, lineHeight = 16.sp, modifier = Modifier.padding(top = 3.dp))
             }
             Column(horizontalAlignment = Alignment.End) {
-                Text(now.atZone(zone).format(DateTimeFormatter.ofPattern("HH:mm")), fontSize = 23.sp, lineHeight = 27.sp, fontWeight = FontWeight.Light)
+                Text(now.atZone(zone).format(DateTimeFormatter.ofPattern("HH:mm")), fontSize = 23.sp, lineHeight = 27.sp, fontWeight = FontWeight.SemiBold)
                 Text("YEREL SAAT", color = Muted, fontSize = 8.sp, lineHeight = 11.sp, letterSpacing = 1.5.sp)
             }
         }
         Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
-                Text(degrees(hour?.temperature), fontSize = 82.sp, fontWeight = FontWeight.Light, letterSpacing = (-5).sp, lineHeight = 88.sp)
-                Text(condition.description, color = Accent, fontSize = 15.sp, lineHeight = 20.sp, fontWeight = FontWeight.Medium)
+                Text(degrees(hour?.temperature), fontSize = 82.sp, fontWeight = FontWeight.Bold, letterSpacing = (-4).sp, lineHeight = 88.sp)
+                Text(condition.description, color = Accent, fontSize = 15.sp, lineHeight = 20.sp, fontWeight = FontWeight.SemiBold)
             }
             WeatherGlyph(hour?.weatherCode, hour?.isDay ?: true, Modifier.size(112.dp))
         }

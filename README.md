@@ -8,6 +8,7 @@ Android 8.0 (API 26) ve üzeri cihazları hedefler. Open-Meteo ücretsiz uç nok
 - Güncel saate ait tahmin, önbellekteki tüm saatler için yatay kaydırılabilen sıcaklık eğrisi ve 7 günlük tahmin.
 - Rüzgâr yönü/hızı ve pusula; gün doğumu/batımı saatleri ile güneşin gün içindeki konumunu gösteren eğri.
 - Grafik, rüzgâr ve güneş kartları yuvarlatılmış, yarı saydam yüzeyler kullanır.
+- Uygulamaya gömülü Inter yazı tipi; kalın başlıklar/değerler ve okunabilir küçük metinler. Font çevrimdışı çalışır; SIL Open Font License uygulama paketinde yer alır.
 - Şehir/ilçe araması; yaklaşık konum ve kullanıcının izin vermesi halinde tek seferlik kesin GPS konumu.
 - Hava koşuluna ve gündüz/geceye göre değişen tam ekran atmosfer; yerel saat, büyük sıcaklık gösterimi ve yarı saydam gösterge kartları.
 - Google konum servisi boş sonuç verdiğinde Android ağ/GPS sağlayıcılarıyla devam etme, güncel kayıtlı konumu kullanma ve açık ayar yönlendirmeleri.

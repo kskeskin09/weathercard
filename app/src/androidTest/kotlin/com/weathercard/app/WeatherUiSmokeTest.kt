@@ -78,7 +78,7 @@ class WeatherUiSmokeTest {
             compose.onNodeWithText("‹ Geri").performClick()
             scenario.onActivity { activity ->
                 activity.setContent {
-                    MaterialTheme(colorScheme = darkColorScheme()) {
+                    WeatherCardTheme {
                         Column(Modifier.fillMaxSize().background(Color(0xFF0B1324)).padding(horizontal = 12.dp, vertical = 32.dp)) {
                             Text("WEATHERCARD · HAVA DURUMU İKONLARI", color = Color(0xFFB3D4FF), fontSize = 13.sp)
                             Image(painterResource(R.drawable.ic_launcher_foreground), contentDescription = "WeatherCard uygulama logosu", modifier = Modifier.size(64.dp))
