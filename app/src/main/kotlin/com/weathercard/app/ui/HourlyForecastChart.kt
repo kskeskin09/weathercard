@@ -64,7 +64,7 @@ fun HourlyForecastChart(
     LaunchedEffect(currentHour) { scroll.scrollToItem(ordered.indexOfFirst { it.time == currentHour }.coerceAtLeast(0)) }
     val locale = Locale.getDefault()
     Column(modifier.fillMaxWidth().clip(RoundedCornerShape(28.dp))
-        .background(Color.White.copy(alpha = .075f))
+        .background(CardFill)
         .border(1.dp, Color.White.copy(alpha = .1f), RoundedCornerShape(28.dp))) {
         header?.let { Box(Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 4.dp)) { it() } }
         LazyRow(

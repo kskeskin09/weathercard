@@ -30,7 +30,7 @@ fun WeatherDetails(hour: HourWeather?, day: DayWeather?, now: Instant, zone: Zon
             SunTimesCard(day, now, zone, compact = true)
         }
         Column(Modifier.weight(1f).height(274.dp)
-            .background(Color.White.copy(alpha = .07f), RoundedCornerShape(28.dp))
+            .background(CardFill, RoundedCornerShape(28.dp))
             .border(1.dp, Color.White.copy(alpha = .09f), RoundedCornerShape(28.dp)).padding(horizontal = 14.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.SpaceEvenly) {
             val rows = listOf(

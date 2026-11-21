@@ -46,6 +46,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.weathercard.app.ui.WeatherGlyph
+import com.weathercard.app.ui.CardFill
 import com.weathercard.app.ui.UsageScreen
 import com.weathercard.app.ui.SettingsScreen
 import com.weathercard.app.ui.WeatherBackdrop
@@ -311,7 +312,7 @@ private fun ForecastDaysCard(
 ) {
     // The tapped day opens below its row and shows that day's cached hours; no network request.
     var openDay by remember { mutableStateOf<String?>(null) }
-    Column(Modifier.fillMaxWidth().background(Color.White.copy(alpha = .07f), RoundedCornerShape(28.dp))
+    Column(Modifier.fillMaxWidth().background(CardFill, RoundedCornerShape(28.dp))
         .border(1.dp, Color.White.copy(alpha = .07f), RoundedCornerShape(28.dp)).padding(start = 16.dp, end = 10.dp, top = 2.dp, bottom = 16.dp)) {
         Text(stringResource(R.string.daily_title), color = Muted, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 12.dp, bottom = 4.dp))
         days.take(7).forEach { day ->

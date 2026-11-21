@@ -23,7 +23,7 @@ enum class MetricKind { FEELS_LIKE, RAIN, WIND, HUMIDITY, UV, PRESSURE }
 
 @Composable
 fun MetricTile(label: String, value: String, unit: String, kind: MetricKind, modifier: Modifier = Modifier) {
-    Column(modifier.height(64.dp).background(Color.White.copy(alpha = .07f), RoundedCornerShape(19.dp))
+    Column(modifier.height(64.dp).background(CardFill, RoundedCornerShape(19.dp))
         .border(1.dp, Color.White.copy(alpha = .1f), RoundedCornerShape(19.dp)).padding(10.dp), verticalArrangement = Arrangement.SpaceBetween) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
             MetricSymbol(kind, Modifier.size(14.dp))
