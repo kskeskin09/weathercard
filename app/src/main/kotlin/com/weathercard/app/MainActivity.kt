@@ -218,7 +218,7 @@ private fun ForecastPage(
             }
             val today = now.atZone(zone).toLocalDate()
             val days = snapshot.days.filter { !LocalDate.parse(it.date).isBefore(today) }
-            item { ForecastDaysCard(days, today, !state.busy) onFullRefresh }
+            item { ForecastDaysCard(days, today, !state.busy, onFullRefresh) }
             item { Text("DETAYLAR", color = Muted, fontSize = 10.sp, letterSpacing = 1.5.sp, modifier = Modifier.padding(top = 10.dp)) }
             item(key = "weather-details") { WeatherDetails(current, snapshot.days.find { it.date == today.toString() }, now, zone) }
             item {
