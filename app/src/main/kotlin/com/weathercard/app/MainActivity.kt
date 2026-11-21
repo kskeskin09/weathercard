@@ -305,7 +305,9 @@ private fun DayRow(day: DayWeather, today: LocalDate) {
         WeatherGlyph(day.weatherCode, modifier = Modifier.size(34.dp))
         Spacer(Modifier.width(8.dp))
         Text(if (date == today) stringResource(R.string.today) else if (date == today.plusDays(1)) stringResource(R.string.tomorrow) else date.format(DateTimeFormatter.ofPattern("EEE", Locale.getDefault())), fontSize = 12.sp,
-            fontWeight = FontWeight.SemiBold, modifier = Modifier.width(48.dp))
+            // Wide enough for "Tomorrow" at large font sizes too; never wraps onto a second line.
+            fontWeight = FontWeight.SemiBold, maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.widthIn(min = 72.dp).padding(end = 6.dp))
         Text(stringResource(WeatherCondition.from(day.weatherCode).kind.labelRes), color = Muted, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
         Spacer(Modifier.width(6.dp))
         Text(degrees(day.maximum), fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
