@@ -28,7 +28,10 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.weathercard.app.ui.WeatherGlyph
 import com.weathercard.app.ui.UsageScreen
@@ -95,6 +98,11 @@ internal fun WeatherScreen(vm: WeatherViewModel = viewModel(), previewNow: Insta
     // Advancing the display clock never makes a network request.
     var now by remember(previewNow) { mutableStateOf(previewNow ?: Instant.now()) }
     LaunchedEffect(previewNow) { if (previewNow == null) while (true) { now = Instant.now(); delay(30_000) } }
+    // Hourly six-hour refresh, only while the app is on screen; previews never touch the network.
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    LaunchedEffect(previewNow, lifecycle) {
+        if (previewNow == null) lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) { vm.refreshEveryHourWhileVisible() }
+    }
     val activeZone = state.snapshot?.timezone?.let(ZoneId::of) ?: ZoneId.systemDefault()
     val activeHour = now.atZone(activeZone).truncatedTo(ChronoUnit.HOURS).toEpochSecond()
     val activeWeather = state.snapshot?.hours?.find { it.time == activeHour }
