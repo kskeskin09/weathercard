@@ -7,6 +7,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.weathercard.app.data.DeviceLocationProvider
+import com.weathercard.app.widget.WeatherWidget
 import com.weathercard.core.Place
 import com.weathercard.core.WeatherSnapshot
 import com.weathercard.core.UsageSummary
@@ -97,12 +98,20 @@ class WeatherViewModel(application: Application) : AndroidViewModel(application)
             try {
                 val snapshot = action()
                 mutableState.update { it.copy(snapshot = snapshot, busy = false, status = null) }
+                refreshWidget()
             }
             catch (error: CancellationException) { throw error }
             catch (error: Exception) {
                 mutableState.update { it.copy(busy = false, status = null, message = error.message ?: "Bağlantı kurulamadı. Kayıtlı veriler korunuyor.") }
             }
         }
+    }
+
+    /** The widget only reads the disk cache, so redraw it whenever the app saved new data. */
+    private suspend fun refreshWidget() {
+        try { WeatherWidget.refresh(app) }
+        catch (error: CancellationException) { throw error }
+        catch (_: Exception) { }
     }
 
     fun search(query: String) {
