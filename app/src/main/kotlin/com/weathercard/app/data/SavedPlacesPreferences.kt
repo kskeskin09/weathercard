@@ -26,6 +26,14 @@ object SavedPlacesPreferences {
         return SavedPlaces(listOf(legacy))
     }
 
+    private const val LOCATION_PAGE = "location_page_enabled"
+
+    /** The page that follows the device location; on unless the user turns it off in settings. */
+    fun locationPageEnabled(preferences: SharedPreferences): Boolean = preferences.getBoolean(LOCATION_PAGE, true)
+    fun setLocationPageEnabled(preferences: SharedPreferences, enabled: Boolean) {
+        preferences.edit().putBoolean(LOCATION_PAGE, enabled).apply()
+    }
+
     fun write(preferences: SharedPreferences, saved: SavedPlaces) {
         preferences.edit().putString(KEY, json.encodeToString(SavedPlaces.serializer(), saved)).apply()
     }

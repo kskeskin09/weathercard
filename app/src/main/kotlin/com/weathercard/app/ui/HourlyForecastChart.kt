@@ -14,6 +14,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
@@ -55,7 +56,7 @@ fun HourlyForecastChart(hours: List<HourWeather>, currentHour: Long, zone: ZoneI
     val locale = Locale.getDefault()
     LazyRow(
         state = scroll,
-        modifier = modifier.fillMaxWidth().clip(RoundedCornerShape(28.dp))
+        modifier = modifier.fillMaxWidth().testTag("hourly-chart").clip(RoundedCornerShape(28.dp))
             .background(Color.White.copy(alpha = .075f))
             .border(1.dp, Color.White.copy(alpha = .1f), RoundedCornerShape(28.dp)),
         contentPadding = PaddingValues(vertical = 12.dp),
