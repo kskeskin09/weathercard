@@ -240,6 +240,9 @@ class WeatherUiSmokeTest {
                         androidx.compose.runtime.CompositionLocalProvider(
                             androidx.compose.ui.platform.LocalContext provides context,
                             androidx.compose.ui.platform.LocalConfiguration provides configuration,
+                            // These owners are normally found by walking LocalContext up to the activity.
+                            androidx.activity.compose.LocalActivityResultRegistryOwner provides activity,
+                            androidx.activity.compose.LocalOnBackPressedDispatcherOwner provides activity,
                         ) { WeatherCardTheme { WeatherScreen() } }
                     }
                 }
