@@ -114,6 +114,25 @@ class WeatherViewModel(application: Application) : AndroidViewModel(application)
     fun refresh() = runWeather { app.repository.refreshSixHours(selected) }
     fun reloadAll() = runWeather { app.repository.reloadAll(selected) }
 
+    /** The menu's "refresh all": a fresh seven days for every saved city, one after another. */
+    fun reloadAllCities() {
+        if (mutableState.value.busy) return
+        mutableState.update { it.copy(busy = true, message = null, status = null) }
+        viewModelScope.launch {
+            var failure: UiText? = null
+            for (place in mutableState.value.places) {
+                try {
+                    val snapshot = app.repository.reloadAll(place)
+                    mutableState.update { it.copy(snapshots = it.snapshots + (place.cacheKey to snapshot)) }
+                } catch (error: CancellationException) { throw error }
+                // One failed city keeps its cache; the rest still refresh.
+                catch (error: Exception) { if (failure == null) failure = error.toUiText() }
+            }
+            mutableState.update { it.copy(busy = false, message = failure) }
+            refreshWidget()
+        }
+    }
+
     /** Last automatic attempt per city, so a failed refresh waits an hour instead of looping. */
     private val autoAttempts = mutableMapOf<String, Instant>()
 
