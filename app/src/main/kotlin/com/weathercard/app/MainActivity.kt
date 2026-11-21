@@ -105,7 +105,7 @@ internal fun WeatherScreen(vm: WeatherViewModel = viewModel(), previewNow: Insta
     // Advancing the display clock never makes a network request.
     var now by remember(previewNow) { mutableStateOf(previewNow ?: Instant.now()) }
     LaunchedEffect(previewNow) { if (previewNow == null) while (true) { now = Instant.now(); delay(30_000) } }
-    // Hourly six-hour refresh, only while the app is on screen; previews never touch the network.
+    // Hourly full refresh (at most once an hour per city), only while the app is on screen; previews never touch the network.
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     LaunchedEffect(previewNow, lifecycle) {
         if (previewNow == null) lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) { vm.refreshEveryHourWhileVisible() }

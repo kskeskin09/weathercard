@@ -23,8 +23,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import java.time.Duration
 import java.time.Instant
-import java.time.ZoneId
-import java.time.temporal.ChronoUnit
 
 data class WeatherUiState(
     val saved: SavedPlaces,
@@ -116,26 +114,38 @@ class WeatherViewModel(application: Application) : AndroidViewModel(application)
     fun refresh() = runWeather { app.repository.refreshSixHours(selected) }
     fun reloadAll() = runWeather { app.repository.reloadAll(selected) }
 
+    /** Last automatic attempt per city, so a failed refresh waits an hour instead of looping. */
+    private val autoAttempts = mutableMapOf<String, Instant>()
+
     /**
      * Runs only while the screen is visible (the caller ties it to the lifecycle), so there is no
-     * background work. Each clock hour gets at most one normal six-hour refresh; a failure keeps the
-     * cache and simply waits for the next hour instead of retrying or falling back to a full reload.
+     * background work. The visible city gets a full seven-day refresh when its last full download
+     * (or last automatic attempt) is at least an hour old: on opening the app, on returning to it,
+     * on swiping to that city, and every hour while it stays on screen. A failure keeps the cache
+     * and waits another hour; it never retries in a loop.
      */
     suspend fun refreshEveryHourWhileVisible() {
         while (true) {
             val settled = state.first { !it.busy }
+            val place = settled.saved.current
             val snapshot = settled.snapshot
-            val zone = snapshot?.timezone?.let(ZoneId::of) ?: ZoneId.systemDefault()
-            val now = Instant.now()
-            val hourStart = now.atZone(zone).truncatedTo(ChronoUnit.HOURS).toInstant()
-            if (snapshot != null && Instant.ofEpochSecond(snapshot.sixHoursFetchedAt ?: snapshot.fullFetchedAt).isBefore(hourStart)) {
-                refresh()
+            var waitUntil: Instant? = null
+            if (snapshot != null) {
+                val key = place.cacheKey
+                val last = listOfNotNull(Instant.ofEpochSecond(snapshot.fullFetchedAt), autoAttempts[key]).max()
+                val due = last.plus(AUTO_REFRESH_INTERVAL)
+                if (!Instant.now().isBefore(due)) {
+                    autoAttempts[key] = Instant.now()
+                    reloadAll()
+                    state.first { !it.busy }
+                    continue
+                }
+                waitUntil = due
             }
-            // A couple of seconds past the boundary so the new hour is already the window's first hour.
-            val next = hourStart.plus(1, ChronoUnit.HOURS).plusSeconds(2)
-            // Swiping to another city re-checks at once, so a city last seen hours ago gets this hour's refresh.
-            withTimeoutOrNull(Duration.between(Instant.now(), next).toMillis().coerceAtLeast(1_000)) {
-                state.first { it.saved.current.cacheKey != settled.saved.current.cacheKey || (settled.snapshot == null && it.snapshot != null) }
+            // Swiping to another city or the first snapshot arriving re-checks at once.
+            val timeout = waitUntil?.let { Duration.between(Instant.now(), it).toMillis().coerceAtLeast(1_000) } ?: Long.MAX_VALUE
+            withTimeoutOrNull(timeout) {
+                state.first { it.saved.current.cacheKey != place.cacheKey || (snapshot == null && it.snapshot != null) }
             }
         }
     }
@@ -211,3 +221,5 @@ class WeatherViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 }
+
+private val AUTO_REFRESH_INTERVAL: Duration = Duration.ofHours(1)
