@@ -209,7 +209,7 @@ class WeatherUiSmokeTest {
                 if (name == "day") {
                     compose.onNodeWithTag("forecast-list").performScrollToIndex(1)
                     screenshot(app, "day-hourly.png")
-                    compose.onNodeWithTag("forecast-list").performScrollToIndex(4)
+                    compose.onNodeWithTag("forecast-list").performScrollToIndex(3)
                     screenshot(app, "day-wind-sun.png")
                 }
             }

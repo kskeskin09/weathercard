@@ -22,7 +22,6 @@
     <string name="action_retry">Tekrar dene</string>
     <string name="hourly_title">Saatlik tahmin</string>
     <string name="action_refresh">Yenile ↻</string>
-    <string name="details_header">DETAYLAR</string>
     <string name="daily_stale">Günlük tahmin eski. Yeni 7 gün için “Tümünü güncelle”yi kullan.</string>
     <string name="full_fetched">7 günlük kayıt: %1$s</string>
     <string name="six_fetched">Son 6 saat yenilemesi: %1$s</string>
@@ -31,7 +30,6 @@
     <string name="city_pages">Şehir %1$d / %2$d</string>
     <string name="daily_title">7 günlük tahmin</string>
     <string name="daily_expired">Kayıtlı günlük tahminin süresi doldu.</string>
-    <string name="action_collapse">Kısalt</string>
     <string name="day_show_hours">Saatlik tahmini göster</string>
     <string name="day_hide_hours">Saatlik tahmini gizle</string>
     <string name="day_no_hours">Bu gün için kayıtlı saatlik tahmin yok.</string>

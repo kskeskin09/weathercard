@@ -239,7 +239,6 @@ private fun ForecastPage(
             val today = now.atZone(zone).toLocalDate()
             val days = snapshot.days.filter { !LocalDate.parse(it.date).isBefore(today) }
             item { ForecastDaysCard(days, today, !state.busy, onFullRefresh, snapshot.hours, hour, zone) }
-            item { Text(stringResource(R.string.details_header), color = Muted, fontSize = 10.sp, letterSpacing = 1.5.sp, modifier = Modifier.padding(top = 10.dp)) }
             item(key = "weather-details") { WeatherDetails(current, snapshot.days.find { it.date == today.toString() }, now, zone) }
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
@@ -294,7 +293,6 @@ private fun ForecastDaysCard(
     days: List<DayWeather>, today: LocalDate, enabled: Boolean, onFullRefresh: () -> Unit,
     hours: List<HourWeather>, currentHour: Long, zone: ZoneId,
 ) {
-    var expanded by remember(days) { mutableStateOf(false) }
     // The tapped day opens below its row and shows that day's cached hours; no network request.
     var openDay by remember { mutableStateOf<String?>(null) }
     Column(Modifier.fillMaxWidth().background(Color.White.copy(alpha = .07f), RoundedCornerShape(28.dp))
@@ -303,7 +301,7 @@ private fun ForecastDaysCard(
             Text(stringResource(R.string.daily_title), color = Muted, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
             TextButton(onClick = onFullRefresh, enabled = enabled, contentPadding = PaddingValues(horizontal = 4.dp)) { Text(stringResource(R.string.action_update_all), fontSize = 10.sp) }
         }
-        days.take(if (expanded) 7 else 3).forEach { day ->
+        days.take(7).forEach { day ->
             val open = openDay == day.date
             DayRow(day, today, open) { openDay = if (open) null else day.date }
             AnimatedVisibility(open, enter = expandVertically() + fadeIn(), exit = shrinkVertically() + fadeOut()) {
@@ -311,10 +309,6 @@ private fun ForecastDaysCard(
             }
         }
         if (days.isEmpty()) Text(stringResource(R.string.daily_expired), fontSize = 12.sp, color = Muted)
-        if (days.size > 3) FilledTonalButton(onClick = { expanded = !expanded }, modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
-            colors = ButtonDefaults.filledTonalButtonColors(containerColor = Color.White.copy(alpha = .15f), contentColor = Color.White)) {
-            Text(stringResource(if (expanded) R.string.action_collapse else R.string.daily_title), fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-        }
     }
 }
 
