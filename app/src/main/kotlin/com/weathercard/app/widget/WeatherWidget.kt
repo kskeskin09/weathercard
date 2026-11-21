@@ -6,6 +6,7 @@ import android.appwidget.AppWidgetManager
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import com.weathercard.app.data.SavedPlacesPreferences
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
@@ -45,7 +46,6 @@ import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
 import com.weathercard.app.MainActivity
 import com.weathercard.app.WeatherApplication
-import com.weathercard.core.Place
 import java.time.Instant
 import java.util.Calendar
 
@@ -70,15 +70,8 @@ class WeatherWidget : GlanceAppWidget() {
 
     private suspend fun loadForecast(context: Context): WidgetForecast? {
         val app = context.applicationContext as WeatherApplication
-        val preferences = context.getSharedPreferences("settings", 0)
-        val place = runCatching {
-            Place(
-                preferences.getString("name", "İstanbul")!!,
-                preferences.getString("latitude", "41.0082")!!.toDouble(),
-                preferences.getString("longitude", "28.9784")!!.toDouble(),
-                preferences.getBoolean("is_current", false),
-            )
-        }.getOrNull() ?: return null
+        // The widget shows the city last visible on the main screen.
+        val place = runCatching { SavedPlacesPreferences.read(context.getSharedPreferences("settings", 0)).current }.getOrNull() ?: return null
         val snapshot = runCatching { app.forecastStore.read(place) }.getOrNull() ?: return null
         return WidgetForecast.from(snapshot, Instant.now())
     }

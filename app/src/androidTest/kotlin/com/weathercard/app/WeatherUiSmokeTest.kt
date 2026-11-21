@@ -18,6 +18,9 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeLeft
+import androidx.compose.ui.test.swipeRight
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performScrollToIndex
@@ -68,7 +71,8 @@ class WeatherUiSmokeTest {
         }
         app.getSharedPreferences("settings", 0).edit().clear().commit()
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
-            compose.waitUntil(15_000) { compose.onAllNodes(androidx.compose.ui.test.hasText("İstanbul")).fetchSemanticsNodes().isNotEmpty() }
+            // The header shows the saved city name at once; wait for the cached forecast itself.
+            compose.waitUntil(15_000) { compose.onAllNodesWithText("18°").fetchSemanticsNodes().isNotEmpty() }
             compose.onNodeWithText("İstanbul").assertIsDisplayed()
             compose.onAllNodesWithText("18°").onFirst().assertIsDisplayed()
             compose.onNodeWithContentDescription("Diğer seçenekler").performClick()
@@ -126,6 +130,43 @@ class WeatherUiSmokeTest {
             }
         }
         throw checkNotNull(lastError)
+    }
+
+    @Test fun savedCitiesSwipeFromCacheWithoutNetwork() {
+        val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as WeatherApplication
+        val zone = ZoneId.of("Europe/Istanbul")
+        val now = Instant.now()
+        val first = now.truncatedTo(ChronoUnit.HOURS).epochSecond
+        val today = now.atZone(zone).toLocalDate()
+        val istanbul = Place("İstanbul", 41.0082, 28.9784)
+        val ankara = Place("Ankara", 39.9334, 32.8597)
+        val izmir = Place("İzmir", 38.4237, 27.1428)
+        // Each city gets a distinct temperature so the swipe is visible in the screenshots.
+        listOf(istanbul to 18.0, ankara to 7.0, izmir to 24.0).forEach { (place, temperature) ->
+            val hours = (0..167).map { i -> HourWeather(first + i * 3600, temperature, temperature - 1, 60.0,
+                10.0, 0.0, if (place == ankara) 3 else 1, 30.0, 1015.0, 12000.0, 10.0, 200.0, 18.0, 2.0, true) }
+            val days = (0..6).map { i -> DayWeather(today.plusDays(i.toLong()).toString(), 1, temperature - 5, temperature + 3, 10.0, 0.0, 12.0, null, null, 2.0) }
+            runBlocking {
+                com.weathercard.app.data.DiskForecastStore(File(app.filesDir, "forecasts"))
+                    .write(WeatherSnapshot(place, "Europe/Istanbul", hours, days, now.epochSecond))
+            }
+        }
+        val saved = kotlinx.serialization.json.Json.encodeToString(SavedPlaces.serializer(), SavedPlaces(listOf(istanbul, ankara, izmir)))
+        app.getSharedPreferences("settings", 0).edit().clear().putString("places_v1", saved).commit()
+        ActivityScenario.launch(MainActivity::class.java).use {
+            compose.waitUntil(15_000) { compose.onAllNodesWithText("18°").fetchSemanticsNodes().isNotEmpty() }
+            compose.onNodeWithContentDescription("Şehir 1 / 3").assertIsDisplayed()
+            screenshot(app, "cities-first.png")
+            compose.onNodeWithTag("city-pager").performTouchInput { swipeLeft() }
+            compose.waitUntil(10_000) { compose.onAllNodesWithText("Ankara").fetchSemanticsNodes().isNotEmpty() }
+            compose.waitUntil(10_000) { compose.onAllNodesWithText("7°").fetchSemanticsNodes().isNotEmpty() }
+            compose.onAllNodesWithText("7°").onFirst().assertIsDisplayed()
+            compose.onNodeWithContentDescription("Şehir 2 / 3").assertIsDisplayed()
+            screenshot(app, "cities-second.png")
+            compose.onNodeWithTag("city-pager").performTouchInput { swipeRight() }
+            compose.waitUntil(10_000) { compose.onAllNodesWithText("İstanbul").fetchSemanticsNodes().isNotEmpty() }
+            compose.waitUntil(10_000) { compose.onAllNodesWithText("18°").fetchSemanticsNodes().isNotEmpty() }
+        }
     }
 
     @Test fun renderAtmospherePreviews() {
