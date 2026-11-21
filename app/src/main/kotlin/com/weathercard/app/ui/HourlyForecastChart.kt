@@ -65,7 +65,7 @@ fun HourlyForecastChart(
     Column(modifier.fillMaxWidth().clip(RoundedCornerShape(28.dp))
         .background(Color.White.copy(alpha = .075f))
         .border(1.dp, Color.White.copy(alpha = .1f), RoundedCornerShape(28.dp))) {
-        header?.let { Box(Modifier.fillMaxWidth().padding(start = 16.dp, end = 6.dp, top = 2.dp)) { it() } }
+        header?.let { Box(Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 4.dp)) { it() } }
         LazyRow(
             state = scroll,
             modifier = Modifier.fillMaxWidth(),
