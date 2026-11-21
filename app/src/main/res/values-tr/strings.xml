@@ -8,25 +8,21 @@
     <string name="menu_use_location">Konumumu kullan</string>
     <string name="menu_remove_city">Bu şehri kaldır</string>
     <string name="menu_quota">Kota</string>
-    <string name="menu_reload_week">7 günü yeniden yükle</string>
+    <string name="menu_refresh_all">Hepsini yenile</string>
     <string name="remove_title">Şehri kaldır</string>
     <string name="remove_text">%1$s kayıtlı şehirlerinden kaldırılsın mı?</string>
     <string name="action_remove">Kaldır</string>
     <string name="action_cancel">Vazgeç</string>
-    <string name="reload_week_text">Bu işlem saatlik ve günlük tahminlerin tamamını yeniden indirir. Normal yenileme yalnızca 6 saati günceller.</string>
-    <string name="action_update_all">Tümünü güncelle</string>
     <string name="location_settings">Konum ayarları</string>
     <string name="app_permission">Uygulama izni</string>
     <string name="loading_forecast">Gökyüzüne bakıyoruz…</string>
     <string name="forecast_unavailable">Tahminler henüz yüklenemedi</string>
     <string name="action_retry">Tekrar dene</string>
     <string name="hourly_title">Saatlik tahmin</string>
-    <string name="action_refresh">Yenile ↻</string>
     <string name="details_header">DETAYLAR</string>
-    <string name="daily_stale">Günlük tahmin eski. Yeni 7 gün için “Tümünü güncelle”yi kullan.</string>
+    <string name="daily_stale">Günlük tahmin eski. Uygulama açıkken saatte bir kendiliğinden yenilenir; hemen yenilemek için ⋮ menüsünden “Hepsini yenile”yi kullan.</string>
     <string name="full_fetched">7 günlük kayıt: %1$s</string>
     <string name="six_fetched">Son 6 saat yenilemesi: %1$s</string>
-    <string name="refresh_note">Yenileme yalnızca bu saat dahil 6 saatlik tahmini değiştirir. Günlük tahminler korunur.</string>
     <string name="attribution">Hava durumu: Open-Meteo · CC BY 4.0</string>
     <string name="city_pages">Şehir %1$d / %2$d</string>
     <string name="daily_title">7 günlük tahmin</string>
@@ -37,7 +33,6 @@
     <string name="search_title">Şehir bul</string>
     <string name="search_label">Şehir veya ilçe</string>
     <string name="searching">Aranıyor…</string>
-    <string name="action_search">Ara</string>
     <string name="action_close">Kapat</string>
     <string name="search_none">Şehir bulunamadı.</string>
     <string name="search_failed">Şehir araması başarısız. Tekrar dene.</string>
@@ -145,4 +140,8 @@
         <item>Batı</item>
         <item>Kuzeybatı</item>
     </string-array>
+    <string name="menu_settings">Ayarlar</string>
+    <string name="settings_title">Ayarlar</string>
+    <string name="settings_location_page">Konum sayfası</string>
+    <string name="settings_location_page_note">Bulunduğun yere göre değişen ilk sayfa. Uygulama yeniden açıldığında bu sayfadan başlar.</string>
 </resources>

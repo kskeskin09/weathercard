@@ -14,6 +14,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
@@ -55,7 +56,7 @@ fun HourlyForecastChart(hours: List<HourWeather>, currentHour: Long, zone: ZoneI
     val locale = Locale.getDefault()
     LazyRow(
         state = scroll,
-        modifier = modifier.fillMaxWidth().clip(RoundedCornerShape(28.dp))
+        modifier = modifier.fillMaxWidth().testTag("hourly-chart").clip(RoundedCornerShape(28.dp))
             .background(CardFill)
             .border(1.dp, Color.White.copy(alpha = .1f), RoundedCornerShape(28.dp)),
         contentPadding = PaddingValues(vertical = 12.dp),
@@ -114,7 +115,9 @@ fun HourlyForecastChart(hours: List<HourWeather>, currentHour: Long, zone: ZoneI
                 Text(wind, color = Color(0xFFD0E0EF), fontSize = 13.sp, lineHeight = 17.sp, modifier = Modifier.padding(top = 3.dp))
                 Text(stringResource(R.string.wind_unit), color = Color(0xFFABC5DC), fontSize = 9.sp, lineHeight = 12.sp)
                 Text(label, color = if (current) Color.White else Color(0xFFC0D3E5), fontSize = 14.sp, lineHeight = 18.sp, fontWeight = if (current) FontWeight.SemiBold else FontWeight.Normal, modifier = Modifier.padding(top = 9.dp))
-                Text(local.format(DateTimeFormatter.ofPattern("d MMM", locale)), color = Color(0xFF9DB8D2), fontSize = 9.sp, lineHeight = 12.sp, modifier = Modifier.padding(top = 3.dp, bottom = 5.dp))
+                Text(local.format(DateTimeFormatter.ofPattern("d MMM", locale)), color = Color(0xFF9DB8D2), fontSize = 9.sp, lineHeight = 12.sp, modifier = Modifier.padding(top = 3.dp))
+                // Short weekday under the date (Pzt / Mon), from the device language.
+                Text(local.format(DateTimeFormatter.ofPattern("EEE", locale)), color = Color(0xFF9DB8D2), fontSize = 9.sp, lineHeight = 12.sp, modifier = Modifier.padding(top = 1.dp, bottom = 5.dp))
             }
         }
     }

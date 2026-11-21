@@ -41,4 +41,15 @@ class SavedPlacesTest {
         assertFalse(saved.canAdd)
         assertFailsWith<IllegalArgumentException> { saved.add(ankara) }
     }
+    @Test fun `turning off the location page keeps the saved cities`() {
+        val saved = SavedPlaces(listOf(here, istanbul, ankara), 2).withoutCurrentLocation()!!
+        assertEquals(listOf(istanbul, ankara), saved.places)
+        assertEquals(ankara, saved.current)
+        assertNull(SavedPlaces(listOf(here)).withoutCurrentLocation())
+        assertEquals(listOf(istanbul), SavedPlaces(listOf(istanbul)).withoutCurrentLocation()!!.places)
+    }
+    @Test fun `fresh start opens the location page`() {
+        assertEquals(0, SavedPlaces(listOf(here, istanbul, ankara), 2).startPage().selected)
+        assertEquals(2, SavedPlaces(listOf(istanbul, izmir, ankara), 2).startPage().selected)
+    }
 }

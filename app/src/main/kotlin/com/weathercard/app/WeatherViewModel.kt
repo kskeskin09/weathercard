@@ -14,6 +14,7 @@ import com.weathercard.core.SavedPlaces
 import com.weathercard.core.WeatherSnapshot
 import com.weathercard.core.UsageSummary
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -23,8 +24,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import java.time.Duration
 import java.time.Instant
-import java.time.ZoneId
-import java.time.temporal.ChronoUnit
 
 data class WeatherUiState(
     val saved: SavedPlaces,
@@ -40,6 +39,8 @@ data class WeatherUiState(
     val usage: UsageSummary? = null,
     val usageError: UiText? = null,
     val status: UiText? = null,
+    /** Settings: show the page that follows the device location. */
+    val locationPage: Boolean = true,
 ) {
     val places: List<Place> get() = saved.places
     val page: Int get() = saved.selected
@@ -50,10 +51,39 @@ data class WeatherUiState(
 class WeatherViewModel(application: Application) : AndroidViewModel(application) {
     private val app = application as WeatherApplication
     private val preferences = application.getSharedPreferences("settings", 0)
-    private val mutableState = MutableStateFlow(WeatherUiState(readSaved()))
+    private val mutableState = MutableStateFlow(WeatherUiState(readSaved(), locationPage = SavedPlacesPreferences.locationPageEnabled(preferences)))
     val state = mutableState.asStateFlow()
     private val selected: Place get() = mutableState.value.saved.current
-    init { ensureAround(mutableState.value.saved) }
+    init {
+        // A new ViewModel means the app was started fresh (e.g. after being swiped away from
+        // recents): open on the location page and, if permission is already there, locate once.
+        if (mutableState.value.locationPage) {
+            val start = mutableState.value.saved.startPage()
+            if (start != mutableState.value.saved) { save(start); mutableState.update { it.copy(saved = start) } }
+        }
+        ensureAround(mutableState.value.saved)
+        if (mutableState.value.locationPage && hasLocationPermission()) useLocation()
+    }
+
+    private fun hasLocationPermission() =
+        ContextCompat.checkSelfPermission(app, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+
+    /**
+     * Turning the location page off removes it and keeps the saved cities. Turning it on only stores
+     * the choice; the screen then asks for permission and calls [useLocation].
+     */
+    fun setLocationPage(enabled: Boolean) {
+        SavedPlacesPreferences.setLocationPageEnabled(preferences, enabled)
+        mutableState.update { it.copy(locationPage = enabled) }
+        if (enabled) return
+        val current = mutableState.value.saved
+        val saved = current.withoutCurrentLocation() ?: SavedPlaces(listOf(DEFAULT_CITY))
+        if (saved == current) return
+        save(saved)
+        mutableState.update { it.copy(saved = saved, message = null) }
+        ensureAround(saved)
+        viewModelScope.launch { refreshWidget() }
+    }
 
     /** The visible city first, then its neighbours, so a swipe already shows their saved forecast. */
     private fun ensureAround(saved: SavedPlaces) {
@@ -116,26 +146,57 @@ class WeatherViewModel(application: Application) : AndroidViewModel(application)
     fun refresh() = runWeather { app.repository.refreshSixHours(selected) }
     fun reloadAll() = runWeather { app.repository.reloadAll(selected) }
 
+    /** The menu's "refresh all": a fresh seven days for every saved city, one after another. */
+    fun reloadAllCities() {
+        if (mutableState.value.busy) return
+        mutableState.update { it.copy(busy = true, message = null, status = null) }
+        viewModelScope.launch {
+            var failure: UiText? = null
+            for (place in mutableState.value.places) {
+                try {
+                    val snapshot = app.repository.reloadAll(place)
+                    mutableState.update { it.copy(snapshots = it.snapshots + (place.cacheKey to snapshot)) }
+                } catch (error: CancellationException) { throw error }
+                // One failed city keeps its cache; the rest still refresh.
+                catch (error: Exception) { if (failure == null) failure = error.toUiText() }
+            }
+            mutableState.update { it.copy(busy = false, message = failure) }
+            refreshWidget()
+        }
+    }
+
+    /** Last automatic attempt per city, so a failed refresh waits an hour instead of looping. */
+    private val autoAttempts = mutableMapOf<String, Instant>()
+
     /**
      * Runs only while the screen is visible (the caller ties it to the lifecycle), so there is no
-     * background work. Each clock hour gets at most one normal six-hour refresh; a failure keeps the
-     * cache and simply waits for the next hour instead of retrying or falling back to a full reload.
+     * background work. The visible city gets a full seven-day refresh when its last full download
+     * (or last automatic attempt) is at least an hour old: on opening the app, on returning to it,
+     * on swiping to that city, and every hour while it stays on screen. A failure keeps the cache
+     * and waits another hour; it never retries in a loop.
      */
     suspend fun refreshEveryHourWhileVisible() {
         while (true) {
             val settled = state.first { !it.busy }
+            val place = settled.saved.current
             val snapshot = settled.snapshot
-            val zone = snapshot?.timezone?.let(ZoneId::of) ?: ZoneId.systemDefault()
-            val now = Instant.now()
-            val hourStart = now.atZone(zone).truncatedTo(ChronoUnit.HOURS).toInstant()
-            if (snapshot != null && Instant.ofEpochSecond(snapshot.sixHoursFetchedAt ?: snapshot.fullFetchedAt).isBefore(hourStart)) {
-                refresh()
+            var waitUntil: Instant? = null
+            if (snapshot != null) {
+                val key = place.cacheKey
+                val last = listOfNotNull(Instant.ofEpochSecond(snapshot.fullFetchedAt), autoAttempts[key]).max()
+                val due = last.plus(AUTO_REFRESH_INTERVAL)
+                if (!Instant.now().isBefore(due)) {
+                    autoAttempts[key] = Instant.now()
+                    reloadAll()
+                    state.first { !it.busy }
+                    continue
+                }
+                waitUntil = due
             }
-            // A couple of seconds past the boundary so the new hour is already the window's first hour.
-            val next = hourStart.plus(1, ChronoUnit.HOURS).plusSeconds(2)
-            // Swiping to another city re-checks at once, so a city last seen hours ago gets this hour's refresh.
-            withTimeoutOrNull(Duration.between(Instant.now(), next).toMillis().coerceAtLeast(1_000)) {
-                state.first { it.saved.current.cacheKey != settled.saved.current.cacheKey || (settled.snapshot == null && it.snapshot != null) }
+            // Swiping to another city or the first snapshot arriving re-checks at once.
+            val timeout = waitUntil?.let { Duration.between(Instant.now(), it).toMillis().coerceAtLeast(1_000) } ?: Long.MAX_VALUE
+            withTimeoutOrNull(timeout) {
+                state.first { it.saved.current.cacheKey != place.cacheKey || (snapshot == null && it.snapshot != null) }
             }
         }
     }
@@ -185,12 +246,24 @@ class WeatherViewModel(application: Application) : AndroidViewModel(application)
         catch (_: Exception) { }
     }
 
+    private var searchJob: Job? = null
+
+    /**
+     * Called on every keystroke. Waits until typing pauses before asking the geocoder, and a newer
+     * query cancels the older one, so only the latest text produces results (and counts as usage).
+     */
     fun search(query: String) {
-        if (query.trim().length < 2 || mutableState.value.searching) return
-        mutableState.update { it.copy(searching = true, searchResults = emptyList(), searchMessage = null) }
-        viewModelScope.launch {
+        searchJob?.cancel()
+        val text = query.trim()
+        if (text.length < 2) {
+            mutableState.update { it.copy(searching = false, searchResults = emptyList(), searchMessage = null) }
+            return
+        }
+        searchJob = viewModelScope.launch {
+            delay(SEARCH_DEBOUNCE_MILLIS)
+            mutableState.update { it.copy(searching = true, searchMessage = null) }
             try {
-                val results = app.api.searchPlaces(query)
+                val results = app.api.searchPlaces(text)
                 mutableState.update { it.copy(searching = false, searchResults = results, searchMessage = if (results.isEmpty()) UiText(R.string.search_none) else null) }
             } catch (error: CancellationException) { throw error }
             catch (_: Exception) { mutableState.update { it.copy(searching = false, searchMessage = UiText(R.string.search_failed)) } }
@@ -202,7 +275,8 @@ class WeatherViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun useLocation() {
-        if (ContextCompat.checkSelfPermission(app, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+        if (!mutableState.value.locationPage) return
+        if (!hasLocationPermission()) {
             permissionDenied(); return
         }
         runWeather(status = UiText(R.string.locating), current = true) {
@@ -211,3 +285,7 @@ class WeatherViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 }
+
+private val AUTO_REFRESH_INTERVAL: Duration = Duration.ofHours(1)
+private const val SEARCH_DEBOUNCE_MILLIS = 350L
+private val DEFAULT_CITY = Place("İstanbul", 41.0082, 28.9784)
