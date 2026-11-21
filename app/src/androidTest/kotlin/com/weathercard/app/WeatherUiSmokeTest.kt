@@ -132,11 +132,12 @@ class WeatherUiSmokeTest {
         val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as WeatherApplication
         val zone = ZoneId.of("Europe/Istanbul")
         val date = java.time.LocalDate.now(zone)
-        val cases = listOf(Triple("day", 0, 12), Triple("night", 0, 23), Triple("rain", 63, 14), Triple("snow", 73, 10))
-        cases.forEach { (name, code, displayHour) ->
-            val reference = date.atTime(displayHour, 0).atZone(zone).toInstant()
+        val cases = listOf(Triple("day", 0, 12 * 60), Triple("night", 0, 23 * 60), Triple("rain", 63, 14 * 60), Triple("snow", 73, 10 * 60),
+            Triple("sunset", 2, 17 * 60 + 35))
+        cases.forEach { (name, code, displayMinute) ->
+            val reference = date.atStartOfDay(zone).plusMinutes(displayMinute.toLong()).toInstant()
             val start = date.atStartOfDay(zone).toEpochSecond()
-            val base = when (name) { "snow" -> 2.0; "night" -> 12.0; "rain" -> 16.0; else -> 21.0 }
+            val base = when (name) { "snow" -> 2.0; "night" -> 12.0; "rain" -> 16.0; "sunset" -> 15.0; else -> 21.0 }
             val hours = (0..167).map { i ->
                 val time = start + i * 3600
                 val localHour = Instant.ofEpochSecond(time).atZone(zone).hour

@@ -101,7 +101,7 @@ internal fun WeatherScreen(vm: WeatherViewModel = viewModel(), previewNow: Insta
     val daylight = activeWeather?.isDay ?: (now.atZone(activeZone).hour in 7..18)
     Surface(Modifier.fillMaxSize(), color = Ink) {
       Box(Modifier.fillMaxSize()) {
-        WeatherBackdrop(activeWeather?.weatherCode, daylight, Modifier.fillMaxSize())
+        WeatherBackdrop(activeWeather?.weatherCode, daylight, Modifier.fillMaxSize(), now, activeZone, state.snapshot?.days.orEmpty())
         Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()) {
             Row(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 3.dp), verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = { showSearch = true }, enabled = !state.busy, modifier = Modifier.semantics { contentDescription = "Şehir ekle" }) {
