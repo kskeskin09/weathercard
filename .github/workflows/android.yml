@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       publish_nightly:
-        description: 'Görseller kullanıcı tarafından onaylandı; nightly yayımla'
+        description: 'Screenshots were approved; publish the nightly'
         type: boolean
         required: true
         default: false
@@ -77,16 +77,15 @@ jobs:
         shell: bash
         run: |
           cat > "$RUNNER_TEMP/nightly-notes.md" <<EOF
-          Android telefonundan **weathercard-nightly.apk** dosyasını indirip aç.
+          Download **weathercard-nightly.apk** on your Android phone and open it.
 
-          - Sürüm: **$VERSION_NAME** (kod: $VERSION_CODE)
-          - Android 8.0 ve üzeri
+          - Version: **$VERSION_NAME** (code: $VERSION_CODE)
+          - Android 8.0 or newer
           - Commit: $GITHUB_SHA
-          - Sabit imzalama anahtarıyla üretilir; önceki nightly sürümünün üzerine kurulabilir.
-          - Bu tek nightly ön sürümü yalnızca görsel onayı sonrasında elle yayımlanır.
-          - Repo private: indirmek için bu repoya erişimi olan GitHub hesabınla giriş yapmalısın.
+          - Signed with the same key as every nightly, so it installs over the previous one.
+          - This is a test build, published by hand after its screenshots were reviewed.
 
-          Kontroller: birim testleri, Android lint, release derlemesi ve APK imza doğrulaması.
+          Checks: unit tests, Android lint, release build and APK signature verification.
           EOF
           if gh release view nightly --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
             gh release upload nightly dist/weathercard-nightly.apk dist/weathercard-nightly.apk.sha256 --clobber --repo "$GITHUB_REPOSITORY"
