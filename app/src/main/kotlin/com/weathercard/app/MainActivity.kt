@@ -225,14 +225,16 @@ private fun ForecastPage(
             val current = snapshot.hours.find { it.time == hour }
             item { CurrentCard(current, now, zone) }
             item {
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Text(stringResource(R.string.hourly_title), fontSize = 15.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
-                    Text(LocalContext.current.resources.getQuantityString(R.plurals.hourly_count, snapshot.hours.size, snapshot.hours.size), color = Muted, fontSize = 10.sp, letterSpacing = 2.sp)
-                    TextButton(onClick = vm::refresh, enabled = !state.busy) { Text(stringResource(R.string.action_refresh), fontSize = 12.sp) }
+                // Title, hour count and refresh sit inside the chart card, like the 7-day card's header.
+                key(snapshot.place.cacheKey) {
+                    HourlyForecastChart(snapshot.hours, hour, zone) {
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                            Text(stringResource(R.string.hourly_title), color = Muted, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                            Text(LocalContext.current.resources.getQuantityString(R.plurals.hourly_count, snapshot.hours.size, snapshot.hours.size), color = Muted, fontSize = 10.sp, letterSpacing = 2.sp)
+                            TextButton(onClick = vm::refresh, enabled = !state.busy, contentPadding = PaddingValues(horizontal = 6.dp)) { Text(stringResource(R.string.action_refresh), fontSize = 10.sp) }
+                        }
+                    }
                 }
-            }
-            item {
-                key(snapshot.place.cacheKey) { HourlyForecastChart(snapshot.hours, hour, zone) }
             }
             val today = now.atZone(zone).toLocalDate()
             val days = snapshot.days.filter { !LocalDate.parse(it.date).isBefore(today) }
@@ -296,7 +298,7 @@ private fun ForecastDaysCard(
     // The tapped day opens below its row and shows that day's cached hours; no network request.
     var openDay by remember { mutableStateOf<String?>(null) }
     Column(Modifier.fillMaxWidth().background(Color.White.copy(alpha = .07f), RoundedCornerShape(28.dp))
-        .border(1.dp, Color.White.copy(alpha = .07f), RoundedCornerShape(28.dp)).padding(16.dp)) {
+        .border(1.dp, Color.White.copy(alpha = .07f), RoundedCornerShape(28.dp)).padding(start = 16.dp, end = 10.dp, top = 2.dp, bottom = 16.dp)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text(stringResource(R.string.daily_title), color = Muted, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
             TextButton(onClick = onFullRefresh, enabled = enabled, contentPadding = PaddingValues(horizontal = 4.dp)) { Text(stringResource(R.string.action_update_all), fontSize = 10.sp) }
