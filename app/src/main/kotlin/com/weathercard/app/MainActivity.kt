@@ -33,7 +33,10 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.weathercard.app.ui.WeatherGlyph
 import com.weathercard.app.ui.UsageScreen
@@ -101,6 +104,11 @@ internal fun WeatherScreen(vm: WeatherViewModel = viewModel(), previewNow: Insta
     // Advancing the display clock never makes a network request.
     var now by remember(previewNow) { mutableStateOf(previewNow ?: Instant.now()) }
     LaunchedEffect(previewNow) { if (previewNow == null) while (true) { now = Instant.now(); delay(30_000) } }
+    // Hourly six-hour refresh, only while the app is on screen; previews never touch the network.
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    LaunchedEffect(previewNow, lifecycle) {
+        if (previewNow == null) lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) { vm.refreshEveryHourWhileVisible() }
+    }
     val pager = rememberPagerState(initialPage = state.page) { state.places.size }
     // The settled page becomes the selected city; programmatic changes (new city, removal) scroll the pager.
     LaunchedEffect(pager) { snapshotFlow { pager.settledPage }.collect(vm::selectPage) }

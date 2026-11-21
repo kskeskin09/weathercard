@@ -10,6 +10,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -37,16 +38,18 @@ import kotlin.math.roundToInt
 /** Virtualized hour columns share matching cubic segments, so the curve remains continuous. */
 @Composable
 fun HourlyForecastChart(hours: List<HourWeather>, currentHour: Long, zone: ZoneId, modifier: Modifier = Modifier) {
-    if (hours.isEmpty()) return
-    val ordered = hours.sortedBy { it.time }
+    // Past hours are never drawn: the curve starts at the current hour and the latest hour stays on the right.
+    val ordered = hours.filter { it.time >= currentHour }.sortedBy { it.time }
+    if (ordered.isEmpty()) return
     val temperatures = ordered.mapNotNull { it.temperature }
     val low = temperatures.minOrNull() ?: 0.0
     val high = temperatures.maxOrNull() ?: low
     val range = (high - low).coerceAtLeast(6.0)
     val center = (high + low) / 2
     fun y(index: Int): Float = (64 - (((ordered[index.coerceIn(0, ordered.lastIndex)].temperature ?: center) - center) / range) * 58).toFloat()
-    val initial = ordered.indexOfFirst { it.time >= currentHour }.let { if (it < 0) (ordered.size - 4).coerceAtLeast(0) else it }
-    val scroll = rememberLazyListState(initialFirstVisibleItemIndex = initial)
+    val scroll = rememberLazyListState()
+    // When the clock passes an hour the old first column disappears; keep "Şimdi" at the left edge.
+    LaunchedEffect(currentHour) { scroll.scrollToItem(0) }
     val locale = Locale.forLanguageTag("tr-TR")
     LazyRow(
         state = scroll,

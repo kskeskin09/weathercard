@@ -11,6 +11,7 @@ import java.io.File
 class WeatherApplication : Application() {
     val usage by lazy { UsageTracker(DiskUsageStore(File(filesDir, "api-usage-v1.json"))) }
     val api by lazy { OpenMeteoApi(usage) }
-    val repository by lazy { WeatherRepository(api, DiskForecastStore(File(filesDir, "forecasts"))) }
+    val forecastStore by lazy { DiskForecastStore(File(filesDir, "forecasts")) }
+    val repository by lazy { WeatherRepository(api, forecastStore) }
 }
 

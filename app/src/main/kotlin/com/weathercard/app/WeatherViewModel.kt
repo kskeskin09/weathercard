@@ -7,17 +7,24 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.weathercard.app.data.DeviceLocationProvider
+import com.weathercard.app.data.SavedPlacesPreferences
+import com.weathercard.app.widget.WeatherWidget
 import com.weathercard.core.Place
 import com.weathercard.core.SavedPlaces
 import com.weathercard.core.WeatherSnapshot
 import com.weathercard.core.UsageSummary
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
+import kotlinx.coroutines.withTimeoutOrNull
+import java.time.Duration
+import java.time.Instant
+import java.time.ZoneId
+import java.time.temporal.ChronoUnit
 
 data class WeatherUiState(
     val saved: SavedPlaces,
@@ -43,7 +50,6 @@ data class WeatherUiState(
 class WeatherViewModel(application: Application) : AndroidViewModel(application) {
     private val app = application as WeatherApplication
     private val preferences = application.getSharedPreferences("settings", 0)
-    private val json = Json { ignoreUnknownKeys = true }
     private val mutableState = MutableStateFlow(WeatherUiState(readSaved()))
     val state = mutableState.asStateFlow()
     private val selected: Place get() = mutableState.value.saved.current
@@ -55,23 +61,8 @@ class WeatherViewModel(application: Application) : AndroidViewModel(application)
             .mapNotNull(saved.places::getOrNull).forEach(::ensureLoaded)
     }
 
-    /** Earlier versions stored a single place under separate keys; keep it as the first page. */
-    private fun readSaved(): SavedPlaces {
-        preferences.getString("places_v1", null)?.let { stored ->
-            try { return json.decodeFromString<SavedPlaces>(stored) } catch (_: IllegalArgumentException) {}
-        }
-        val legacy = Place(
-            preferences.getString("name", "İstanbul")!!,
-            preferences.getString("latitude", "41.0082")!!.toDouble(),
-            preferences.getString("longitude", "28.9784")!!.toDouble(),
-            preferences.getBoolean("is_current", preferences.getString("name", "") == "Mevcut konum"),
-        )
-        return SavedPlaces(listOf(legacy))
-    }
-
-    private fun save(saved: SavedPlaces) {
-        preferences.edit().putString("places_v1", json.encodeToString(saved)).apply()
-    }
+    private fun readSaved(): SavedPlaces = SavedPlacesPreferences.read(preferences)
+    private fun save(saved: SavedPlaces) = SavedPlacesPreferences.write(preferences, saved)
 
     /** Called when the pager settles on a page. Cached cities open from disk only. */
     fun selectPage(index: Int) {
@@ -81,6 +72,7 @@ class WeatherViewModel(application: Application) : AndroidViewModel(application)
         save(saved)
         mutableState.update { it.copy(saved = saved, message = null) }
         ensureAround(saved)
+        viewModelScope.launch { refreshWidget() }
     }
 
     /** Opens a saved page's snapshot without blocking other pages. A city without cache downloads 7 days once. */
@@ -118,10 +110,35 @@ class WeatherViewModel(application: Application) : AndroidViewModel(application)
         save(saved)
         mutableState.update { it.copy(saved = saved, message = null) }
         ensureAround(saved)
+        viewModelScope.launch { refreshWidget() }
     }
 
     fun refresh() = runWeather { app.repository.refreshSixHours(selected) }
     fun reloadAll() = runWeather { app.repository.reloadAll(selected) }
+
+    /**
+     * Runs only while the screen is visible (the caller ties it to the lifecycle), so there is no
+     * background work. Each clock hour gets at most one normal six-hour refresh; a failure keeps the
+     * cache and simply waits for the next hour instead of retrying or falling back to a full reload.
+     */
+    suspend fun refreshEveryHourWhileVisible() {
+        while (true) {
+            val settled = state.first { !it.busy }
+            val snapshot = settled.snapshot
+            val zone = snapshot?.timezone?.let(ZoneId::of) ?: ZoneId.systemDefault()
+            val now = Instant.now()
+            val hourStart = now.atZone(zone).truncatedTo(ChronoUnit.HOURS).toInstant()
+            if (snapshot != null && Instant.ofEpochSecond(snapshot.sixHoursFetchedAt ?: snapshot.fullFetchedAt).isBefore(hourStart)) {
+                refresh()
+            }
+            // A couple of seconds past the boundary so the new hour is already the window's first hour.
+            val next = hourStart.plus(1, ChronoUnit.HOURS).plusSeconds(2)
+            // Swiping to another city re-checks at once, so a city last seen hours ago gets this hour's refresh.
+            withTimeoutOrNull(Duration.between(Instant.now(), next).toMillis().coerceAtLeast(1_000)) {
+                state.first { it.saved.current.cacheKey != settled.saved.current.cacheKey || (settled.snapshot == null && it.snapshot != null) }
+            }
+        }
+    }
 
     fun loadUsage() {
         viewModelScope.launch {
@@ -152,12 +169,20 @@ class WeatherViewModel(application: Application) : AndroidViewModel(application)
                     if (saved != state.saved) save(saved)
                     state.copy(saved = saved, snapshots = state.snapshots + (snapshot.place.cacheKey to snapshot), busy = false, status = null)
                 }
+                refreshWidget()
             }
             catch (error: CancellationException) { throw error }
             catch (error: Exception) {
                 mutableState.update { it.copy(busy = false, status = null, message = error.message ?: "Bağlantı kurulamadı. Kayıtlı veriler korunuyor.") }
             }
         }
+    }
+
+    /** The widget only reads the disk cache, so redraw it whenever the app saved new data. */
+    private suspend fun refreshWidget() {
+        try { WeatherWidget.refresh(app) }
+        catch (error: CancellationException) { throw error }
+        catch (_: Exception) { }
     }
 
     fun search(query: String) {
