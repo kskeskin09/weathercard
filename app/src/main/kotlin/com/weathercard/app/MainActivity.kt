@@ -92,7 +92,6 @@ internal fun WeatherCardTheme(content: @Composable () -> Unit) {
 internal fun WeatherScreen(vm: WeatherViewModel = viewModel(), previewNow: Instant? = null) {
     val state by vm.state.collectAsStateWithLifecycle()
     var showSearch by remember { mutableStateOf(false) }
-    var confirmFull by remember { mutableStateOf(false) }
     var showUsage by remember { mutableStateOf(false) }
     var showSettings by remember { mutableStateOf(false) }
     var showMenu by remember { mutableStateOf(false) }
@@ -115,7 +114,7 @@ internal fun WeatherScreen(vm: WeatherViewModel = viewModel(), previewNow: Insta
     // Advancing the display clock never makes a network request.
     var now by remember(previewNow) { mutableStateOf(previewNow ?: Instant.now()) }
     LaunchedEffect(previewNow) { if (previewNow == null) while (true) { now = Instant.now(); delay(30_000) } }
-    // Hourly six-hour refresh, only while the app is on screen; previews never touch the network.
+    // Hourly full refresh (at most once an hour per city), only while the app is on screen; previews never touch the network.
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     LaunchedEffect(previewNow, lifecycle) {
         if (previewNow == null) lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) { vm.refreshEveryHourWhileVisible() }
@@ -176,14 +175,14 @@ internal fun WeatherScreen(vm: WeatherViewModel = viewModel(), previewNow: Insta
                             onClick = { showMenu = false; confirmRemove = true })
                         DropdownMenuItem(text = { Text(stringResource(R.string.menu_quota)) }, onClick = { showMenu = false; showUsage = true })
                         DropdownMenuItem(text = { Text(stringResource(R.string.menu_settings)) }, onClick = { showMenu = false; showSettings = true })
-                        DropdownMenuItem(text = { Text(stringResource(R.string.menu_reload_week)) }, enabled = !state.busy, onClick = { showMenu = false; confirmFull = true })
+                        DropdownMenuItem(text = { Text(stringResource(R.string.menu_refresh_all)) }, enabled = !state.busy, onClick = { showMenu = false; vm.reloadAllCities() })
                     }
                 }
             }
             PullToRefreshBox(isRefreshing = state.busy, onRefresh = vm::refresh, modifier = Modifier.weight(1f)) {
                 HorizontalPager(pager, Modifier.fillMaxSize().testTag("city-pager"), key = { state.places.getOrNull(it)?.cacheKey ?: it }) { page ->
                     state.places.getOrNull(page)?.let { place ->
-                        ForecastPage(state, place, page == state.page, now, vm, onFullRefresh = { confirmFull = true })
+                        ForecastPage(state, place, page == state.page, now, vm)
                     }
                 }
             }
@@ -198,18 +197,11 @@ internal fun WeatherScreen(vm: WeatherViewModel = viewModel(), previewNow: Insta
         confirmButton = { TextButton(onClick = { confirmRemove = false; vm.removeCurrent() }) { Text(stringResource(R.string.action_remove)) } },
         dismissButton = { TextButton(onClick = { confirmRemove = false }) { Text(stringResource(R.string.action_cancel)) } },
     )
-    if (confirmFull) AlertDialog(
-        onDismissRequest = { confirmFull = false },
-        title = { Text(stringResource(R.string.menu_reload_week)) },
-        text = { Text(stringResource(R.string.reload_week_text)) },
-        confirmButton = { TextButton(onClick = { confirmFull = false; vm.reloadAll() }) { Text(stringResource(R.string.action_update_all)) } },
-        dismissButton = { TextButton(onClick = { confirmFull = false }) { Text(stringResource(R.string.action_cancel)) } },
-    )
 }
 
 @Composable
 private fun ForecastPage(
-    state: WeatherUiState, place: Place, selected: Boolean, now: Instant, vm: WeatherViewModel, onFullRefresh: () -> Unit,
+    state: WeatherUiState, place: Place, selected: Boolean, now: Instant, vm: WeatherViewModel,
 ) {
     val snapshot = state.snapshotFor(place)
     LazyColumn(
@@ -248,7 +240,6 @@ private fun ForecastPage(
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Text(stringResource(R.string.hourly_title), fontSize = 15.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
                     Text(LocalContext.current.resources.getQuantityString(R.plurals.hourly_count, snapshot.hours.size, snapshot.hours.size), color = Muted, fontSize = 10.sp, letterSpacing = 2.sp)
-                    TextButton(onClick = vm::refresh, enabled = !state.busy) { Text(stringResource(R.string.action_refresh), fontSize = 12.sp) }
                 }
             }
             item {
@@ -256,7 +247,7 @@ private fun ForecastPage(
             }
             val today = now.atZone(zone).toLocalDate()
             val days = snapshot.days.filter { !LocalDate.parse(it.date).isBefore(today) }
-            item { ForecastDaysCard(days, today, !state.busy, onFullRefresh) }
+            item { ForecastDaysCard(days, today) }
             item { Text(stringResource(R.string.details_header), color = Muted, fontSize = 10.sp, letterSpacing = 1.5.sp, modifier = Modifier.padding(top = 10.dp)) }
             item(key = "weather-details") { WeatherDetails(current, snapshot.days.find { it.date == today.toString() }, now, zone) }
             item {
@@ -267,7 +258,6 @@ private fun ForecastPage(
                     }
                     Text(stringResource(R.string.full_fetched, formatTime(snapshot.fullFetchedAt, zone)), color = Muted, fontSize = 11.sp)
                     snapshot.sixHoursFetchedAt?.let { Text(stringResource(R.string.six_fetched, formatTime(it, zone)), color = Muted, fontSize = 11.sp) }
-                    Text(stringResource(R.string.refresh_note), color = Muted, fontSize = 11.sp)
                 }
             }
         }
@@ -308,13 +298,12 @@ private fun CurrentCard(hour: HourWeather?, now: Instant, zone: ZoneId) {
 }
 
 @Composable
-private fun ForecastDaysCard(days: List<DayWeather>, today: LocalDate, enabled: Boolean, onFullRefresh: () -> Unit) {
+private fun ForecastDaysCard(days: List<DayWeather>, today: LocalDate) {
     var expanded by remember(days) { mutableStateOf(false) }
     Column(Modifier.fillMaxWidth().background(Color.White.copy(alpha = .07f), RoundedCornerShape(28.dp))
         .border(1.dp, Color.White.copy(alpha = .07f), RoundedCornerShape(28.dp)).padding(16.dp)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text(stringResource(R.string.daily_title), color = Muted, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
-            TextButton(onClick = onFullRefresh, enabled = enabled, contentPadding = PaddingValues(horizontal = 4.dp)) { Text(stringResource(R.string.action_update_all), fontSize = 10.sp) }
         }
         days.take(if (expanded) 7 else 3).forEach { DayRow(it, today) }
         if (days.isEmpty()) Text(stringResource(R.string.daily_expired), fontSize = 12.sp, color = Muted)
