@@ -333,12 +333,16 @@ private fun DayRow(day: DayWeather, today: LocalDate) {
 @Composable
 private fun CityDialog(state: WeatherUiState, onSearch: (String) -> Unit, onSelect: (Place) -> Unit, onDismiss: () -> Unit) {
     var query by remember { mutableStateOf("") }
+    // Results from an earlier search are not shown when the dialog opens again.
+    LaunchedEffect(Unit) { onSearch("") }
     AlertDialog(onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.search_title)) },
         text = {
             Column {
-                OutlinedTextField(query, onValueChange = { query = it }, label = { Text(stringResource(R.string.search_label)) }, singleLine = true)
-                TextButton(onClick = { onSearch(query) }, enabled = !state.searching && query.trim().length >= 2) { Text(stringResource(if (state.searching) R.string.searching else R.string.action_search)) }
+                // Searches as you type; there is no separate search button.
+                OutlinedTextField(query, onValueChange = { query = it; onSearch(it) }, label = { Text(stringResource(R.string.search_label)) },
+                    singleLine = true, modifier = Modifier.testTag("city-search"))
+                if (state.searching) Text(stringResource(R.string.searching), color = Muted, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp))
                 state.searchMessage?.let { Text(it.resolve(), color = Muted, fontSize = 12.sp) }
                 LazyColumn(Modifier.heightIn(max = 300.dp)) {
                     items(state.searchResults) { place -> TextButton(onClick = { onSelect(place) }) { Text(place.name) } }

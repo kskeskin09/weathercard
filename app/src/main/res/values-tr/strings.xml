@@ -37,7 +37,6 @@
     <string name="search_title">Şehir bul</string>
     <string name="search_label">Şehir veya ilçe</string>
     <string name="searching">Aranıyor…</string>
-    <string name="action_search">Ara</string>
     <string name="action_close">Kapat</string>
     <string name="search_none">Şehir bulunamadı.</string>
     <string name="search_failed">Şehir araması başarısız. Tekrar dene.</string>

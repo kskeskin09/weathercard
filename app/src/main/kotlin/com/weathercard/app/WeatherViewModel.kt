@@ -14,6 +14,7 @@ import com.weathercard.core.SavedPlaces
 import com.weathercard.core.WeatherSnapshot
 import com.weathercard.core.UsageSummary
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -185,12 +186,24 @@ class WeatherViewModel(application: Application) : AndroidViewModel(application)
         catch (_: Exception) { }
     }
 
+    private var searchJob: Job? = null
+
+    /**
+     * Called on every keystroke. Waits until typing pauses before asking the geocoder, and a newer
+     * query cancels the older one, so only the latest text produces results (and counts as usage).
+     */
     fun search(query: String) {
-        if (query.trim().length < 2 || mutableState.value.searching) return
-        mutableState.update { it.copy(searching = true, searchResults = emptyList(), searchMessage = null) }
-        viewModelScope.launch {
+        searchJob?.cancel()
+        val text = query.trim()
+        if (text.length < 2) {
+            mutableState.update { it.copy(searching = false, searchResults = emptyList(), searchMessage = null) }
+            return
+        }
+        searchJob = viewModelScope.launch {
+            delay(SEARCH_DEBOUNCE_MILLIS)
+            mutableState.update { it.copy(searching = true, searchMessage = null) }
             try {
-                val results = app.api.searchPlaces(query)
+                val results = app.api.searchPlaces(text)
                 mutableState.update { it.copy(searching = false, searchResults = results, searchMessage = if (results.isEmpty()) UiText(R.string.search_none) else null) }
             } catch (error: CancellationException) { throw error }
             catch (_: Exception) { mutableState.update { it.copy(searching = false, searchMessage = UiText(R.string.search_failed)) } }
@@ -211,3 +224,5 @@ class WeatherViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 }
+
+private const val SEARCH_DEBOUNCE_MILLIS = 350L

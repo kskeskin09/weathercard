@@ -38,7 +38,6 @@
     <string name="search_title">Find a city</string>
     <string name="search_label">City or district</string>
     <string name="searching">Searching…</string>
-    <string name="action_search">Search</string>
     <string name="action_close">Close</string>
     <string name="search_none">No city found.</string>
     <string name="search_failed">City search failed. Try again.</string>
