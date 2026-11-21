@@ -122,6 +122,19 @@ class WeatherUiSmokeTest {
     }
 
     /** The node with [tag] on the visible page; a prefetched neighbour page can carry the same tag. */
+    /** Like waitUntil, but a timeout reports the screen's semantics tree on one line. */
+    private fun waitOrDump(what: String, condition: () -> Boolean) {
+        try { compose.waitUntil(10_000, condition) }
+        catch (error: ComposeTimeoutException) {
+            val tree = compose.onAllNodes(androidx.compose.ui.test.isRoot(), useUnmergedTree = true).fetchSemanticsNodes().joinToString(" || ") { root ->
+                generateSequence(listOf(root)) { level -> level.flatMap { it.children }.takeIf { it.isNotEmpty() } }.flatten()
+                    .mapNotNull { node -> node.config.getOrNull(androidx.compose.ui.semantics.SemanticsProperties.Text)?.joinToString() }
+                    .joinToString(" | ")
+            }
+            throw AssertionError("Timed out waiting for $what. Texts: $tree", error)
+        }
+    }
+
     private fun placed(tag: String): androidx.compose.ui.test.SemanticsNodeInteraction {
         val nodes = compose.onAllNodesWithTag(tag).fetchSemanticsNodes()
         val index = nodes.indexOfFirst { it.layoutInfo.isPlaced && kotlin.math.abs(it.boundsInRoot.left) < it.boundsInRoot.width }
@@ -181,8 +194,8 @@ class WeatherUiSmokeTest {
             compose.onNodeWithContentDescription(app.getString(R.string.city_pages, 1, 3)).assertIsDisplayed()
             screenshot(app, "cities-first.png")
             compose.onNodeWithTag("city-pager").performTouchInput { swipeLeft() }
-            compose.waitUntil(10_000) { compose.onAllNodesWithText("Ankara").fetchSemanticsNodes().isNotEmpty() }
-            compose.waitUntil(10_000) { compose.onAllNodesWithText("7°").fetchSemanticsNodes().isNotEmpty() }
+            waitOrDump("Ankara") { compose.onAllNodesWithText("Ankara").fetchSemanticsNodes().isNotEmpty() }
+            waitOrDump("7°") { compose.onAllNodesWithText("7°").fetchSemanticsNodes().isNotEmpty() }
             compose.waitUntil(5_000) { pagerSettled() }
             compose.onAllNodesWithText("7°").onFirst().assertIsDisplayed()
             compose.onNodeWithContentDescription(app.getString(R.string.city_pages, 2, 3)).assertIsDisplayed()
@@ -231,8 +244,8 @@ class WeatherUiSmokeTest {
             compose.onNodeWithTag("location-page-setting").performClick()
             screenshot(app, "settings.png")
             compose.onNodeWithText(app.getString(R.string.action_back)).performClick()
-            compose.waitUntil(10_000) { compose.onAllNodesWithText("Ankara").fetchSemanticsNodes().isNotEmpty() }
-            compose.waitUntil(10_000) { compose.onAllNodesWithText("7°").fetchSemanticsNodes().isNotEmpty() }
+            waitOrDump("Ankara") { compose.onAllNodesWithText("Ankara").fetchSemanticsNodes().isNotEmpty() }
+            waitOrDump("7°") { compose.onAllNodesWithText("7°").fetchSemanticsNodes().isNotEmpty() }
             org.junit.Assert.assertTrue(compose.onAllNodesWithContentDescription(app.getString(R.string.city_pages, 1, 2)).fetchSemanticsNodes().isEmpty())
         }
         org.junit.Assert.assertFalse(app.getSharedPreferences("settings", 0).getBoolean("location_page_enabled", true))
