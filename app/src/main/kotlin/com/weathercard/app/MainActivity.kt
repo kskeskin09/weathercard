@@ -47,6 +47,7 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.weathercard.app.ui.WeatherGlyph
 import com.weathercard.app.ui.UsageScreen
+import com.weathercard.app.ui.SettingsScreen
 import com.weathercard.app.ui.WeatherBackdrop
 import com.weathercard.app.ui.HourlyForecastChart
 import com.weathercard.app.ui.WindCard
@@ -61,6 +62,7 @@ import androidx.compose.ui.res.stringResource
 import com.weathercard.app.ui.labelRes
 import com.weathercard.core.*
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -97,22 +99,29 @@ internal fun WeatherCardTheme(content: @Composable () -> Unit) {
 internal fun WeatherScreen(vm: WeatherViewModel = viewModel(), previewNow: Instant? = null) {
     val state by vm.state.collectAsStateWithLifecycle()
     var showSearch by remember { mutableStateOf(false) }
-    var confirmFull by remember { mutableStateOf(false) }
     var showUsage by remember { mutableStateOf(false) }
+    var showSettings by remember { mutableStateOf(false) }
     var showMenu by remember { mutableStateOf(false) }
     var confirmRemove by remember { mutableStateOf(false) }
+    val location = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { permissions ->
+        if (permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true || permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true) vm.useLocation() else vm.permissionDenied()
+    }
+    if (showSettings) {
+        SettingsScreen(state.locationPage, onBack = { showSettings = false }, onLocationPageChange = { enabled ->
+            vm.setLocationPage(enabled)
+            if (enabled) location.launch(arrayOf(Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.ACCESS_FINE_LOCATION))
+        })
+        return
+    }
     if (showUsage) {
         LaunchedEffect(Unit) { vm.loadUsage() }
         UsageScreen(state.usage, state.usageError, onBack = { showUsage = false }, onReload = vm::loadUsage)
         return
     }
-    val location = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { permissions ->
-        if (permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true || permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true) vm.useLocation() else vm.permissionDenied()
-    }
     // Advancing the display clock never makes a network request.
     var now by remember(previewNow) { mutableStateOf(previewNow ?: Instant.now()) }
     LaunchedEffect(previewNow) { if (previewNow == null) while (true) { now = Instant.now(); delay(30_000) } }
-    // Hourly six-hour refresh, only while the app is on screen; previews never touch the network.
+    // Hourly full refresh (at most once an hour per city), only while the app is on screen; previews never touch the network.
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     LaunchedEffect(previewNow, lifecycle) {
         if (previewNow == null) lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) { vm.refreshEveryHourWhileVisible() }
@@ -121,6 +130,22 @@ internal fun WeatherScreen(vm: WeatherViewModel = viewModel(), previewNow: Insta
     // The settled page becomes the selected city; programmatic changes (new city, removal) scroll the pager.
     LaunchedEffect(pager) { snapshotFlow { pager.settledPage }.collect(vm::selectPage) }
     LaunchedEffect(state.page, state.places.size) { if (pager.currentPage != state.page) pager.animateScrollToPage(state.page) }
+    // A swipe that starts on the hourly chart reaches the pager through nested scrolling, and its
+    // release does not always run the pager's own snap. Finish any half-done swipe onto a whole page.
+    LaunchedEffect(pager) {
+        snapshotFlow { pager.isScrollInProgress }.collectLatest { scrolling ->
+            if (scrolling) return@collectLatest
+            delay(120)
+            if (pager.isScrollInProgress || pager.currentPageOffsetFraction == 0f) return@collectLatest
+            val moved = pager.currentPage + pager.currentPageOffsetFraction - pager.settledPage
+            val target = when {
+                moved > .25f -> pager.settledPage + 1
+                moved < -.25f -> pager.settledPage - 1
+                else -> pager.settledPage
+            }.coerceIn(0, (pager.pageCount - 1).coerceAtLeast(0))
+            pager.animateScrollToPage(target)
+        }
+    }
     // Header and backdrop follow the page under the finger so they change as soon as the swipe passes halfway.
     val shownPlace = state.places.getOrNull(pager.currentPage) ?: state.saved.current
     val shown = state.snapshotFor(shownPlace)
@@ -149,21 +174,22 @@ internal fun WeatherScreen(vm: WeatherViewModel = viewModel(), previewNow: Insta
                 Box {
                     IconButton(onClick = { showMenu = true }, modifier = Modifier.semantics { contentDescription = moreOptions }) { Text("⋮", fontSize = 28.sp) }
                     DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
-                        DropdownMenuItem(text = { Text(stringResource(R.string.menu_use_location)) }, enabled = !state.busy, onClick = {
+                        if (state.locationPage) DropdownMenuItem(text = { Text(stringResource(R.string.menu_use_location)) }, enabled = !state.busy, onClick = {
                             showMenu = false; location.launch(arrayOf(Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.ACCESS_FINE_LOCATION))
                         })
                         DropdownMenuItem(text = { Text(addCity) }, enabled = state.saved.canAdd, onClick = { showMenu = false; showSearch = true })
                         if (state.places.size > 1) DropdownMenuItem(text = { Text(stringResource(R.string.menu_remove_city)) }, enabled = !state.busy,
                             onClick = { showMenu = false; confirmRemove = true })
                         DropdownMenuItem(text = { Text(stringResource(R.string.menu_quota)) }, onClick = { showMenu = false; showUsage = true })
-                        DropdownMenuItem(text = { Text(stringResource(R.string.menu_reload_week)) }, enabled = !state.busy, onClick = { showMenu = false; confirmFull = true })
+                        DropdownMenuItem(text = { Text(stringResource(R.string.menu_settings)) }, onClick = { showMenu = false; showSettings = true })
+                        DropdownMenuItem(text = { Text(stringResource(R.string.menu_refresh_all)) }, enabled = !state.busy, onClick = { showMenu = false; vm.reloadAllCities() })
                     }
                 }
             }
             PullToRefreshBox(isRefreshing = state.busy, onRefresh = vm::refresh, modifier = Modifier.weight(1f)) {
                 HorizontalPager(pager, Modifier.fillMaxSize().testTag("city-pager"), key = { state.places.getOrNull(it)?.cacheKey ?: it }) { page ->
                     state.places.getOrNull(page)?.let { place ->
-                        ForecastPage(state, place, page == state.page, now, vm, onFullRefresh = { confirmFull = true })
+                        ForecastPage(state, place, page == state.page, now, vm)
                     }
                 }
             }
@@ -178,18 +204,11 @@ internal fun WeatherScreen(vm: WeatherViewModel = viewModel(), previewNow: Insta
         confirmButton = { TextButton(onClick = { confirmRemove = false; vm.removeCurrent() }) { Text(stringResource(R.string.action_remove)) } },
         dismissButton = { TextButton(onClick = { confirmRemove = false }) { Text(stringResource(R.string.action_cancel)) } },
     )
-    if (confirmFull) AlertDialog(
-        onDismissRequest = { confirmFull = false },
-        title = { Text(stringResource(R.string.menu_reload_week)) },
-        text = { Text(stringResource(R.string.reload_week_text)) },
-        confirmButton = { TextButton(onClick = { confirmFull = false; vm.reloadAll() }) { Text(stringResource(R.string.action_update_all)) } },
-        dismissButton = { TextButton(onClick = { confirmFull = false }) { Text(stringResource(R.string.action_cancel)) } },
-    )
 }
 
 @Composable
 private fun ForecastPage(
-    state: WeatherUiState, place: Place, selected: Boolean, now: Instant, vm: WeatherViewModel, onFullRefresh: () -> Unit,
+    state: WeatherUiState, place: Place, selected: Boolean, now: Instant, vm: WeatherViewModel,
 ) {
     val snapshot = state.snapshotFor(place)
     LazyColumn(
@@ -225,9 +244,9 @@ private fun ForecastPage(
             val current = snapshot.hours.find { it.time == hour }
             item { CurrentCard(current, now, zone) }
             item {
-                // Title, hour count and refresh sit inside the chart card, like the 7-day card's header.
+                // Title and hour count sit inside the chart card, like the 7-day card's header.
                 key(snapshot.place.cacheKey) {
-                    HourlyForecastChart(snapshot.hours, hour, zone) {
+                    HourlyForecastChart(snapshot.hours, hour, zone, Modifier.testTag("hourly-chart")) {
                         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                             Text(stringResource(R.string.hourly_title), color = Muted, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
                             Text(LocalContext.current.resources.getQuantityString(R.plurals.hourly_count, snapshot.hours.size, snapshot.hours.size), color = Muted, fontSize = 10.sp, letterSpacing = 2.sp)
@@ -247,7 +266,6 @@ private fun ForecastPage(
                     }
                     Text(stringResource(R.string.full_fetched, formatTime(snapshot.fullFetchedAt, zone)), color = Muted, fontSize = 11.sp)
                     snapshot.sixHoursFetchedAt?.let { Text(stringResource(R.string.six_fetched, formatTime(it, zone)), color = Muted, fontSize = 11.sp) }
-                    Text(stringResource(R.string.refresh_note), color = Muted, fontSize = 11.sp)
                 }
             }
         }
@@ -343,12 +361,16 @@ private fun DayHours(date: LocalDate, hours: List<HourWeather>, currentHour: Lon
 @Composable
 private fun CityDialog(state: WeatherUiState, onSearch: (String) -> Unit, onSelect: (Place) -> Unit, onDismiss: () -> Unit) {
     var query by remember { mutableStateOf("") }
+    // Results from an earlier search are not shown when the dialog opens again.
+    LaunchedEffect(Unit) { onSearch("") }
     AlertDialog(onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.search_title)) },
         text = {
             Column {
-                OutlinedTextField(query, onValueChange = { query = it }, label = { Text(stringResource(R.string.search_label)) }, singleLine = true)
-                TextButton(onClick = { onSearch(query) }, enabled = !state.searching && query.trim().length >= 2) { Text(stringResource(if (state.searching) R.string.searching else R.string.action_search)) }
+                // Searches as you type; there is no separate search button.
+                OutlinedTextField(query, onValueChange = { query = it; onSearch(it) }, label = { Text(stringResource(R.string.search_label)) },
+                    singleLine = true, modifier = Modifier.testTag("city-search"))
+                if (state.searching) Text(stringResource(R.string.searching), color = Muted, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp))
                 state.searchMessage?.let { Text(it.resolve(), color = Muted, fontSize = 12.sp) }
                 LazyColumn(Modifier.heightIn(max = 300.dp)) {
                     items(state.searchResults) { place -> TextButton(onClick = { onSelect(place) }) { Text(place.name) } }

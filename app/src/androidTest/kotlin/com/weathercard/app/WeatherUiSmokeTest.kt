@@ -18,6 +18,10 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.onAllNodesWithContentDescription
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeLeft
 import androidx.compose.ui.test.swipeRight
@@ -54,6 +58,8 @@ import java.time.temporal.ChronoUnit
 class WeatherUiSmokeTest {
     @get:Rule val compose = createEmptyComposeRule()
 
+    // Seeded-cache tests turn the location page off: the test APK may already hold location
+    // permission, and a fresh start would otherwise locate the emulator and add a page.
     @Test fun cachedDashboardAndAllConditionIconsRender() {
         val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as WeatherApplication
         val place = Place("İstanbul", 41.0082, 28.9784)
@@ -72,7 +78,7 @@ class WeatherUiSmokeTest {
             repeat(3) { app.usage.record(RequestKind.SIX_HOURS) }
             app.usage.record(RequestKind.GEOCODING)
         }
-        app.getSharedPreferences("settings", 0).edit().clear().commit()
+        app.getSharedPreferences("settings", 0).edit().clear().putBoolean("location_page_enabled", false).commit()
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             // The header shows the saved city name at once; wait for the cached forecast itself.
             compose.waitUntil(15_000) { compose.onAllNodesWithText("18°").fetchSemanticsNodes().isNotEmpty() }
@@ -115,6 +121,20 @@ class WeatherUiSmokeTest {
         }
     }
 
+    /** The node with [tag] on the visible page; a prefetched neighbour page can carry the same tag. */
+    private fun placed(tag: String): androidx.compose.ui.test.SemanticsNodeInteraction {
+        val nodes = compose.onAllNodesWithTag(tag).fetchSemanticsNodes()
+        val index = nodes.indexOfFirst { it.layoutInfo.isPlaced && kotlin.math.abs(it.boundsInRoot.left) < it.boundsInRoot.width }
+        check(index >= 0) { "No placed node tagged $tag" }
+        return compose.onAllNodesWithTag(tag)[index]
+    }
+
+    /** Prefetched neighbour pages may exist without being placed; only placed pages count. */
+    private fun pagerSettled(): Boolean {
+        val placed = compose.onAllNodesWithTag("forecast-list").fetchSemanticsNodes().filter { it.layoutInfo.isPlaced }
+        return placed.size == 1 && kotlin.math.abs(placed[0].boundsInRoot.left) < 1f
+    }
+
     private fun screenshot(app: WeatherApplication, name: String) {
         val target = File(app.getExternalFilesDir("screenshots"), name)
         var lastError: ComposeTimeoutException? = null
@@ -155,7 +175,7 @@ class WeatherUiSmokeTest {
             }
         }
         val saved = kotlinx.serialization.json.Json.encodeToString(SavedPlaces.serializer(), SavedPlaces(listOf(istanbul, ankara, izmir)))
-        app.getSharedPreferences("settings", 0).edit().clear().putString("places_v1", saved).commit()
+        app.getSharedPreferences("settings", 0).edit().clear().putString("places_v1", saved).putBoolean("location_page_enabled", false).commit()
         ActivityScenario.launch(MainActivity::class.java).use {
             compose.waitUntil(15_000) { compose.onAllNodesWithText("18°").fetchSemanticsNodes().isNotEmpty() }
             compose.onNodeWithContentDescription(app.getString(R.string.city_pages, 1, 3)).assertIsDisplayed()
@@ -163,13 +183,59 @@ class WeatherUiSmokeTest {
             compose.onNodeWithTag("city-pager").performTouchInput { swipeLeft() }
             compose.waitUntil(10_000) { compose.onAllNodesWithText("Ankara").fetchSemanticsNodes().isNotEmpty() }
             compose.waitUntil(10_000) { compose.onAllNodesWithText("7°").fetchSemanticsNodes().isNotEmpty() }
+            compose.waitUntil(5_000) { pagerSettled() }
             compose.onAllNodesWithText("7°").onFirst().assertIsDisplayed()
             compose.onNodeWithContentDescription(app.getString(R.string.city_pages, 2, 3)).assertIsDisplayed()
             screenshot(app, "cities-second.png")
-            compose.onNodeWithTag("city-pager").performTouchInput { swipeRight() }
+            // Kerem's report: a swipe that starts on the hourly chart used to stop between two cities.
+            // The chart is already at its first hour, so this rightward drag passes through to the pager.
+            placed("forecast-list").performScrollToNode(hasTestTag("hourly-chart"))
+            placed("hourly-chart").performTouchInput {
+                down(Offset(width * .1f, height / 2f))
+                repeat(12) { moveBy(Offset(width * .05f, 0f), delayMillis = 16) }
+                up()
+            }
             compose.waitUntil(10_000) { compose.onAllNodesWithText("İstanbul").fetchSemanticsNodes().isNotEmpty() }
+            // Exactly one city page is placed, edge to edge, once the pager has settled on a whole page.
+            compose.waitUntil(5_000) { pagerSettled() }
             compose.waitUntil(10_000) { compose.onAllNodesWithText("18°").fetchSemanticsNodes().isNotEmpty() }
+            screenshot(app, "cities-chart-swipe.png")
         }
+    }
+
+    @Test fun freshStartOpensLocationPageAndSettingRemovesIt() {
+        val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as WeatherApplication
+        val zone = ZoneId.of("Europe/Istanbul")
+        val now = Instant.now()
+        val first = now.truncatedTo(ChronoUnit.HOURS).epochSecond
+        val today = now.atZone(zone).toLocalDate()
+        val here = Place("İstanbul", 41.0082, 28.9784, isCurrentLocation = true)
+        val ankara = Place("Ankara", 39.9334, 32.8597)
+        listOf(here to 18.0, ankara to 7.0).forEach { (place, temperature) ->
+            val hours = (0..167).map { i -> HourWeather(first + i * 3600, temperature, temperature - 1, 60.0,
+                10.0, 0.0, 1, 30.0, 1015.0, 12000.0, 10.0, 200.0, 18.0, 2.0, true) }
+            val days = (0..6).map { i -> DayWeather(today.plusDays(i.toLong()).toString(), 1, temperature - 5, temperature + 3, 10.0, 0.0, 12.0, null, null, 2.0) }
+            runBlocking {
+                com.weathercard.app.data.DiskForecastStore(File(app.filesDir, "forecasts"))
+                    .write(WeatherSnapshot(place, "Europe/Istanbul", hours, days, now.epochSecond))
+            }
+        }
+        // Ankara was the last page seen before the app was swiped away.
+        val saved = kotlinx.serialization.json.Json.encodeToString(SavedPlaces.serializer(), SavedPlaces(listOf(here, ankara), selected = 1))
+        app.getSharedPreferences("settings", 0).edit().clear().putString("places_v1", saved).commit()
+        ActivityScenario.launch(MainActivity::class.java).use {
+            compose.waitUntil(15_000) { compose.onAllNodesWithText("18°").fetchSemanticsNodes().isNotEmpty() }
+            compose.onNodeWithContentDescription(app.getString(R.string.city_pages, 1, 2)).assertIsDisplayed()
+            compose.onNodeWithContentDescription(app.getString(R.string.action_more)).performClick()
+            compose.onNodeWithText(app.getString(R.string.menu_settings)).performClick()
+            compose.onNodeWithTag("location-page-setting").performClick()
+            screenshot(app, "settings.png")
+            compose.onNodeWithText(app.getString(R.string.action_back)).performClick()
+            compose.waitUntil(10_000) { compose.onAllNodesWithText("Ankara").fetchSemanticsNodes().isNotEmpty() }
+            compose.waitUntil(10_000) { compose.onAllNodesWithText("7°").fetchSemanticsNodes().isNotEmpty() }
+            org.junit.Assert.assertTrue(compose.onAllNodesWithContentDescription(app.getString(R.string.city_pages, 1, 2)).fetchSemanticsNodes().isEmpty())
+        }
+        org.junit.Assert.assertFalse(app.getSharedPreferences("settings", 0).getBoolean("location_page_enabled", true))
     }
 
     @Test fun renderAtmospherePreviews() {
@@ -199,7 +265,7 @@ class WeatherUiSmokeTest {
                     WeatherSnapshot(Place("İstanbul", 41.0082, 28.9784, isCurrentLocation = true), "Europe/Istanbul", hours, days, reference.epochSecond)
                 )
             }
-            app.getSharedPreferences("settings", 0).edit().clear().putBoolean("is_current", true).commit()
+            app.getSharedPreferences("settings", 0).edit().clear().putBoolean("is_current", true).putBoolean("location_page_enabled", false).commit()
             ActivityScenario.launch(MainActivity::class.java).use { scenario ->
                 scenario.onActivity { activity -> activity.setContent { WeatherCardTheme { WeatherScreen(previewNow = reference) } } }
                 compose.waitUntil(15_000) { compose.onAllNodesWithText("İstanbul").fetchSemanticsNodes().isNotEmpty() }
@@ -229,7 +295,7 @@ class WeatherUiSmokeTest {
         runBlocking {
             com.weathercard.app.data.DiskForecastStore(File(app.filesDir, "forecasts")).write(WeatherSnapshot(place, "Europe/Istanbul", hours, days, now.epochSecond))
         }
-        app.getSharedPreferences("settings", 0).edit().clear().commit()
+        app.getSharedPreferences("settings", 0).edit().clear().putBoolean("location_page_enabled", false).commit()
         val turkish = java.util.Locale.forLanguageTag("tr-TR")
         val previous = java.util.Locale.getDefault()
         java.util.Locale.setDefault(turkish)
