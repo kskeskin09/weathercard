@@ -26,7 +26,7 @@ class DiskForecastStore(private val directory: File) : ForecastStore {
         catch (_: IllegalArgumentException) { null }
     }
     override suspend fun write(snapshot: WeatherSnapshot): Unit = withContext(Dispatchers.IO) {
-        check(directory.isDirectory || directory.mkdirs()) { "Önbellek klasörü açılamadı." }
+        check(directory.isDirectory || directory.mkdirs()) { "Could not create the cache directory." }
         val target = file(snapshot.place)
         val stream = target.startWrite()
         try {

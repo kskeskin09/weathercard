@@ -13,6 +13,8 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.res.stringResource
+import com.weathercard.app.R
 import com.weathercard.core.Precipitation
 import com.weathercard.core.Sky
 import com.weathercard.core.WeatherCondition
@@ -23,7 +25,8 @@ import kotlin.math.sin
 @Composable
 fun WeatherGlyph(code: Int?, isDay: Boolean = true, modifier: Modifier = Modifier) {
     val condition = WeatherCondition.from(code, isDay)
-    Canvas(modifier.semantics { contentDescription = condition.description }) {
+    val description = stringResource(condition.kind.labelRes)
+    Canvas(modifier.semantics { contentDescription = description }) {
         val factor = size.minDimension / 100f
         scale(factor, factor, pivot = Offset.Zero) { drawCondition(condition, isDay) }
     }

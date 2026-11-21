@@ -26,7 +26,7 @@ data class SavedPlaces(val places: List<Place>, val selected: Int = 0) {
     fun add(place: Place): SavedPlaces {
         val city = place.copy(isCurrentLocation = false)
         indexOf(city).takeIf { it >= 0 }?.let { return select(it) }
-        require(canAdd) { "En fazla $MAX şehir kaydedilebilir." }
+        require(canAdd) { "At most $MAX cities can be saved." }
         return copy(places = places + city, selected = places.size)
     }
 

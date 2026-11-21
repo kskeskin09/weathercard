@@ -37,6 +37,7 @@ import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.weathercard.app.ui.WeatherGlyph
+import com.weathercard.app.ui.labelRes
 import com.weathercard.core.*
 import kotlinx.coroutines.runBlocking
 import org.junit.Rule
@@ -75,19 +76,19 @@ class WeatherUiSmokeTest {
             compose.waitUntil(15_000) { compose.onAllNodesWithText("18°").fetchSemanticsNodes().isNotEmpty() }
             compose.onNodeWithText("İstanbul").assertIsDisplayed()
             compose.onAllNodesWithText("18°").onFirst().assertIsDisplayed()
-            compose.onNodeWithContentDescription("Diğer seçenekler").performClick()
-            compose.onNodeWithText("Kota").performClick()
-            compose.waitUntil(10_000) { compose.onAllNodesWithText("Bu ay").fetchSemanticsNodes().isNotEmpty() }
-            compose.onNodeWithText("API kullanımı").assertIsDisplayed()
+            compose.onNodeWithContentDescription(app.getString(R.string.action_more)).performClick()
+            compose.onNodeWithText(app.getString(R.string.menu_quota)).performClick()
+            compose.waitUntil(10_000) { compose.onAllNodesWithText(app.getString(R.string.usage_month)).fetchSemanticsNodes().isNotEmpty() }
+            compose.onNodeWithText(app.getString(R.string.usage_title)).assertIsDisplayed()
             screenshot(app, "usage.png")
-            compose.onNodeWithText("‹ Geri").performClick()
+            compose.onNodeWithText(app.getString(R.string.action_back)).performClick()
             scenario.onActivity { activity ->
                 activity.setContent {
                     WeatherCardTheme {
                         Column(Modifier.fillMaxSize().background(Color(0xFF0B1324)).padding(horizontal = 12.dp, vertical = 32.dp)) {
-                            Text("WEATHERCARD · HAVA DURUMU İKONLARI", color = Color(0xFFB3D4FF), fontSize = 13.sp)
-                            Image(painterResource(R.drawable.ic_launcher_foreground), contentDescription = "WeatherCard uygulama logosu", modifier = Modifier.size(64.dp))
-                            Text("28 WMO kodu · gündüz / gece", color = Color(0xFF9FAFC8), fontSize = 11.sp, modifier = Modifier.padding(bottom = 10.dp))
+                            Text("WEATHERCARD · WEATHER ICONS", color = Color(0xFFB3D4FF), fontSize = 13.sp)
+                            Image(painterResource(R.drawable.ic_launcher_foreground), contentDescription = "WeatherCard app logo", modifier = Modifier.size(64.dp))
+                            Text("28 WMO codes · day / night", color = Color(0xFF9FAFC8), fontSize = 11.sp, modifier = Modifier.padding(bottom = 10.dp))
                             codes.chunked(4).forEach { row ->
                                 Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
                                     row.forEach { code ->
@@ -96,7 +97,7 @@ class WeatherUiSmokeTest {
                                                 WeatherGlyph(code, true, Modifier.size(38.dp))
                                                 WeatherGlyph(code, false, Modifier.size(38.dp))
                                             }
-                                            Text("$code · ${WeatherCondition.from(code).description}", color = Color(0xFFE5ECF8), fontSize = 9.sp, lineHeight = 11.sp)
+                                            Text("$code · ${app.getString(WeatherCondition.from(code).kind.labelRes)}", color = Color(0xFFE5ECF8), fontSize = 9.sp, lineHeight = 11.sp)
                                         }
                                     }
                                 }
@@ -107,7 +108,7 @@ class WeatherUiSmokeTest {
                 }
             }
             compose.waitForIdle()
-            compose.onNodeWithContentDescription("Açık gece").assertIsDisplayed()
+            compose.onNodeWithContentDescription(app.getString(R.string.condition_clear_night)).assertIsDisplayed()
             screenshot(app, "condition-icons.png")
         }
     }
@@ -155,13 +156,13 @@ class WeatherUiSmokeTest {
         app.getSharedPreferences("settings", 0).edit().clear().putString("places_v1", saved).commit()
         ActivityScenario.launch(MainActivity::class.java).use {
             compose.waitUntil(15_000) { compose.onAllNodesWithText("18°").fetchSemanticsNodes().isNotEmpty() }
-            compose.onNodeWithContentDescription("Şehir 1 / 3").assertIsDisplayed()
+            compose.onNodeWithContentDescription(app.getString(R.string.city_pages, 1, 3)).assertIsDisplayed()
             screenshot(app, "cities-first.png")
             compose.onNodeWithTag("city-pager").performTouchInput { swipeLeft() }
             compose.waitUntil(10_000) { compose.onAllNodesWithText("Ankara").fetchSemanticsNodes().isNotEmpty() }
             compose.waitUntil(10_000) { compose.onAllNodesWithText("7°").fetchSemanticsNodes().isNotEmpty() }
             compose.onAllNodesWithText("7°").onFirst().assertIsDisplayed()
-            compose.onNodeWithContentDescription("Şehir 2 / 3").assertIsDisplayed()
+            compose.onNodeWithContentDescription(app.getString(R.string.city_pages, 2, 3)).assertIsDisplayed()
             screenshot(app, "cities-second.png")
             compose.onNodeWithTag("city-pager").performTouchInput { swipeRight() }
             compose.waitUntil(10_000) { compose.onAllNodesWithText("İstanbul").fetchSemanticsNodes().isNotEmpty() }
@@ -201,7 +202,7 @@ class WeatherUiSmokeTest {
                 scenario.onActivity { activity -> activity.setContent { WeatherCardTheme { WeatherScreen(previewNow = reference) } } }
                 compose.waitUntil(15_000) { compose.onAllNodesWithText("İstanbul").fetchSemanticsNodes().isNotEmpty() }
                 compose.onAllNodesWithText("İstanbul").onFirst().assertIsDisplayed()
-                compose.onNodeWithContentDescription("Mevcut konum").assertIsDisplayed()
+                compose.onNodeWithContentDescription(app.getString(R.string.current_location)).assertIsDisplayed()
                 screenshot(app, "$name-preview.png")
                 if (name == "day") {
                     compose.onNodeWithTag("forecast-list").performScrollToIndex(1)
@@ -211,5 +212,44 @@ class WeatherUiSmokeTest {
                 }
             }
         }
+    }
+    /** The UI follows the system language; render the Turkish resources explicitly so both languages get screenshots. */
+    @Test fun turkishLanguageRendersTurkishText() {
+        val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as WeatherApplication
+        val zone = ZoneId.of("Europe/Istanbul")
+        val now = Instant.now()
+        val first = now.truncatedTo(ChronoUnit.HOURS).epochSecond
+        val today = now.atZone(zone).toLocalDate()
+        val place = Place("İstanbul", 41.0082, 28.9784)
+        val hours = (0..167).map { i -> HourWeather(first + i * 3600, 18.0, 17.0, 60.0,
+            10.0, 0.0, 61, 30.0, 1015.0, 12000.0, 10.0, 200.0, 18.0, 2.0, true) }
+        val days = (0..6).map { i -> DayWeather(today.plusDays(i.toLong()).toString(), 61, 13.0, 21.0, 10.0, 0.0, 12.0, null, null, 2.0) }
+        runBlocking {
+            com.weathercard.app.data.DiskForecastStore(File(app.filesDir, "forecasts")).write(WeatherSnapshot(place, "Europe/Istanbul", hours, days, now.epochSecond))
+        }
+        app.getSharedPreferences("settings", 0).edit().clear().commit()
+        val turkish = java.util.Locale.forLanguageTag("tr-TR")
+        val previous = java.util.Locale.getDefault()
+        java.util.Locale.setDefault(turkish)
+        try {
+            ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+                scenario.onActivity { activity ->
+                    val configuration = android.content.res.Configuration(activity.resources.configuration).apply { setLocale(turkish) }
+                    val context = activity.createConfigurationContext(configuration)
+                    activity.setContent {
+                        androidx.compose.runtime.CompositionLocalProvider(
+                            androidx.compose.ui.platform.LocalContext provides context,
+                            androidx.compose.ui.platform.LocalConfiguration provides configuration,
+                            // These owners are normally found by walking LocalContext up to the activity.
+                            androidx.activity.compose.LocalActivityResultRegistryOwner provides activity,
+                            androidx.activity.compose.LocalOnBackPressedDispatcherOwner provides activity,
+                        ) { WeatherCardTheme { WeatherScreen() } }
+                    }
+                }
+                compose.waitUntil(15_000) { compose.onAllNodesWithText("Saatlik tahmin").fetchSemanticsNodes().isNotEmpty() }
+                compose.onAllNodesWithText("Hafif yağmur").onFirst().assertIsDisplayed()
+                screenshot(app, "turkish-preview.png")
+            }
+        } finally { java.util.Locale.setDefault(previous) }
     }
 }

@@ -32,7 +32,7 @@ class WeatherRepository(
         val window = HourWindow.at(clock.instant(), cached.timezone)
         val updates = api.sixHours(place, window)
         require(updates.size == 6 && updates.map { it.time }.toSet() == window.timestamps) {
-            "Altı saatlik yanıt eksik veya istenen zaman aralığının dışında."
+            "Six-hour response is incomplete or outside the requested window."
         }
         val merged = (cached.hours.filterNot { it.time in window.timestamps } + updates).sortedBy { it.time }
         cached.copy(
@@ -48,7 +48,7 @@ class WeatherRepository(
     private suspend fun fetchAndStore(place: Place): WeatherSnapshot =
         api.fullForecast(place).copy(fullFetchedAt = clock.instant().epochSecond).also { snapshot ->
             require(snapshot.place.cacheKey == place.cacheKey)
-            require(snapshot.days.size >= 7 && snapshot.hours.size >= 48) { "Tam tahmin yanıtı eksik." }
+            require(snapshot.days.size >= 7 && snapshot.hours.size >= 48) { "Full forecast response is incomplete." }
             require(snapshot.hours.map { it.time }.distinct().size == snapshot.hours.size)
             store.write(snapshot)
         }

@@ -20,7 +20,7 @@ object SavedPlacesPreferences {
                 preferences.getString("name", "İstanbul")!!,
                 preferences.getString("latitude", "41.0082")!!.toDouble(),
                 preferences.getString("longitude", "28.9784")!!.toDouble(),
-                preferences.getBoolean("is_current", preferences.getString("name", "") == "Mevcut konum"),
+                preferences.getBoolean("is_current", preferences.getString("name", "") in setOf("Mevcut konum", "Current location")),
             )
         } catch (_: IllegalArgumentException) { Place("İstanbul", 41.0082, 28.9784) }
         return SavedPlaces(listOf(legacy))

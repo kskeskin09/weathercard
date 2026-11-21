@@ -18,7 +18,7 @@ class LocationNameResolver(private val context: Context) {
         if (!Geocoder.isPresent()) return null
         return try {
             withTimeoutOrNull(3500) {
-                val geocoder = Geocoder(context, Locale.forLanguageTag("tr-TR"))
+                val geocoder = Geocoder(context, Locale.getDefault())
                 val address = if (Build.VERSION.SDK_INT >= 33) {
                     suspendCancellableCoroutine<Address?> { continuation ->
                         geocoder.getFromLocation(latitude, longitude, 1, object : Geocoder.GeocodeListener {

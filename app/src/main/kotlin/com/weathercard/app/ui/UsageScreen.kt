@@ -14,7 +14,13 @@ import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import com.weathercard.app.R
+import com.weathercard.app.UiText
+import com.weathercard.app.resolve
 import com.weathercard.core.UsageSummary
+import com.weathercard.core.UsageTotals
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -23,54 +29,54 @@ import java.util.Locale
 private val Muted = Color(0xFF9FAFC8)
 
 @Composable
-fun UsageScreen(summary: UsageSummary?, error: String?, onBack: () -> Unit, onReload: () -> Unit) {
+fun UsageScreen(summary: UsageSummary?, error: UiText?, onBack: () -> Unit, onReload: () -> Unit) {
     BackHandler(onBack = onBack)
     Surface(Modifier.fillMaxSize(), color = Color(0xFF0B1324)) {
         LazyColumn(Modifier.statusBarsPadding().navigationBarsPadding(), contentPadding = PaddingValues(22.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             item {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    TextButton(onClick = onBack) { Text("‹ Geri") }
+                    TextButton(onClick = onBack) { Text(stringResource(R.string.action_back)) }
                     Spacer(Modifier.weight(1f))
-                    TextButton(onClick = onReload) { Text("Sayacı yenile") }
+                    TextButton(onClick = onReload) { Text(stringResource(R.string.usage_reload)) }
                 }
-                Text("API kullanımı", fontSize = 30.sp, fontWeight = FontWeight.SemiBold)
-                Text("Bu cihazın tahmini Open-Meteo tüketimi", color = Muted, fontSize = 13.sp, modifier = Modifier.padding(top = 6.dp))
+                Text(stringResource(R.string.usage_title), fontSize = 30.sp, fontWeight = FontWeight.SemiBold)
+                Text(stringResource(R.string.usage_subtitle), color = Muted, fontSize = 13.sp, modifier = Modifier.padding(top = 6.dp))
             }
             item {
                 Card(colors = CardDefaults.cardColors(containerColor = Color(0xFF253851))) {
-                    Text("Bu sayaç sağlayıcının gerçek kalan kotası değildir. Diğer cihazları ve ortak IP trafiğini göremez. Gönderilmeye çalışılan isteklerden hesaplanır; başarısız istekler de dahildir.", Modifier.padding(16.dp), fontSize = 12.sp)
+                    Text(stringResource(R.string.usage_disclaimer), Modifier.padding(16.dp), fontSize = 12.sp)
                 }
             }
-            error?.let { item { Text(it, color = Color(0xFFFFB8B8)) } }
+            error?.let { item { Text(it.resolve(), color = Color(0xFFFFB8B8)) } }
             if (summary == null) {
                 item { if (error == null) CircularProgressIndicator() }
             } else {
-                item { QuotaCard("Bu saat", summary.hour.quotaTenths, 5_000, summary.hour.weatherRequests) }
-                item { QuotaCard("Bugün", summary.day.quotaTenths, 10_000, summary.day.weatherRequests) }
-                item { QuotaCard("Bu ay", summary.month.quotaTenths, 300_000, summary.month.weatherRequests) }
+                item { QuotaCard(stringResource(R.string.usage_hour), summary.hour.quotaTenths, 5_000, summary.hour.weatherRequests) }
+                item { QuotaCard(stringResource(R.string.usage_day), summary.day.quotaTenths, 10_000, summary.day.weatherRequests) }
+                item { QuotaCard(stringResource(R.string.usage_month), summary.month.quotaTenths, 300_000, summary.month.weatherRequests) }
                 item {
-                    Text("Dönemler UTC takvimine göredir. Yüzdeler ücretsiz planın yayımlanmış limitlerine göre yaklaşık karşılaştırmadır; anlık kota erişimini garanti etmez.", color = Muted, fontSize = 11.sp)
+                    Text(stringResource(R.string.usage_periods_note), color = Muted, fontSize = 11.sp)
                 }
                 item {
                     Column(Modifier.fillMaxWidth().background(Color(0xFF142239), RoundedCornerShape(22.dp)).padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Text("Bu ayın ayrıntıları", fontWeight = FontWeight.SemiBold, fontSize = 18.sp)
-                        Detail("Tam tahmin isteği", summary.month.full.toString())
-                        Detail("6 saatlik yenileme", summary.month.partial.toString())
-                        Detail("Şehir araması", summary.month.searches.toString())
+                        Text(stringResource(R.string.usage_month_details), fontWeight = FontWeight.SemiBold, fontSize = 18.sp)
+                        Detail(stringResource(R.string.usage_full), summary.month.full.toString())
+                        Detail(stringResource(R.string.usage_partial), summary.month.partial.toString())
+                        Detail(stringResource(R.string.usage_searches), summary.month.searches.toString())
                         HorizontalDivider(color = Color.White.copy(alpha = .1f))
-                        Detail("Tüm zamanlar · hava durumu", "${units(summary.lifetime.quotaTenths)} birim")
-                        Text("Şehir araması farklı bir uç noktadır; yukarıdaki hava durumu kota tahminine eklenmez.", color = Muted, fontSize = 11.sp)
+                        Detail(stringResource(R.string.usage_lifetime), stringResource(R.string.usage_units, units(summary.lifetime.quotaTenths)))
+                        Text(stringResource(R.string.usage_search_note), color = Muted, fontSize = 11.sp)
                     }
                 }
                 item {
-                    Text("Nasıl hesaplanıyor?", fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
-                    Text("7 günlük tam tahmin: 2,3 birim\n6 saatlik yenileme: 1,4 birim\nÖnbellekten gösterim: 0 birim", color = Muted, fontSize = 13.sp, lineHeight = 22.sp, modifier = Modifier.padding(top = 8.dp))
-                    Text("Kayıt başlangıcı: ${Instant.ofEpochSecond(summary.startedAt).atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("d MMM yyyy HH:mm", Locale.forLanguageTag("tr-TR")))}\nKayıt cihazda saklanır. Uygulama verisini silmek veya uygulamayı kaldırmak bu sayacı da siler.", color = Muted, fontSize = 11.sp, modifier = Modifier.padding(top = 12.dp))
+                    Text(stringResource(R.string.usage_how), fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+                    Text(stringResource(R.string.usage_costs, units(UsageTotals.FULL_COST_TENTHS), units(UsageTotals.PARTIAL_COST_TENTHS)), color = Muted, fontSize = 13.sp, lineHeight = 22.sp, modifier = Modifier.padding(top = 8.dp))
+                    Text(stringResource(R.string.usage_started, Instant.ofEpochSecond(summary.startedAt).atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("d MMM yyyy HH:mm", Locale.getDefault()))), color = Muted, fontSize = 11.sp, modifier = Modifier.padding(top = 12.dp))
                 }
             }
             item {
                 val uri = LocalUriHandler.current
-                TextButton(onClick = { uri.openUri("https://open-meteo.com/en/pricing") }) { Text("Open-Meteo kota açıklaması ↗", fontSize = 12.sp) }
+                TextButton(onClick = { uri.openUri("https://open-meteo.com/en/pricing") }) { Text(stringResource(R.string.usage_pricing_link), fontSize = 12.sp) }
             }
         }
     }
@@ -82,11 +88,11 @@ private fun QuotaCard(title: String, usedTenths: Long, limit: Long, requests: Lo
     Column(Modifier.fillMaxWidth().background(Color(0xFF142239), RoundedCornerShape(22.dp)).padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Text(title, fontWeight = FontWeight.SemiBold)
-            Text(String.format(Locale.forLanguageTag("tr-TR"), "%%%.2f", ratio * 100), color = Muted, fontSize = 12.sp)
+            Text(stringResource(R.string.percent, String.format(Locale.getDefault(), "%.2f", ratio * 100)), color = Muted, fontSize = 12.sp)
         }
-        Text("${units(usedTenths)} / ${String.format(Locale.forLanguageTag("tr-TR"), "%,d", limit)} birim", fontSize = 23.sp)
+        Text(stringResource(R.string.usage_units_of, units(usedTenths), String.format(Locale.getDefault(), "%,d", limit)), fontSize = 23.sp)
         LinearProgressIndicator(progress = { ratio.coerceIn(0.0, 1.0).toFloat() }, modifier = Modifier.fillMaxWidth(), color = if (ratio >= .8) Color(0xFFFFCE86) else Color(0xFFA6CCFF))
-        Text("$requests hava durumu isteği · tahmini tüketim", color = Muted, fontSize = 11.sp)
+        Text(LocalContext.current.resources.getQuantityString(R.plurals.usage_requests, requests.coerceAtMost(Int.MAX_VALUE.toLong()).toInt(), requests), color = Muted, fontSize = 11.sp)
     }
 }
 
@@ -98,5 +104,5 @@ private fun Detail(label: String, value: String) {
     }
 }
 
-private fun units(tenths: Long) = String.format(Locale.forLanguageTag("tr-TR"), "%,.1f", tenths / 10.0)
+private fun units(tenths: Long) = String.format(Locale.getDefault(), "%,.1f", tenths / 10.0)
 

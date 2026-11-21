@@ -1,5 +1,7 @@
 package com.weathercard.app.widget
 
+import androidx.annotation.StringRes
+import com.weathercard.app.ui.labelRes
 import com.weathercard.core.WeatherCondition
 import com.weathercard.core.WeatherSnapshot
 import java.time.Instant
@@ -14,7 +16,7 @@ data class WidgetForecast(
     val temperature: Double?,
     val weatherCode: Int?,
     val isDay: Boolean,
-    val description: String,
+    @StringRes val descriptionRes: Int,
     val maximum: Double?,
     val minimum: Double?,
 ) {
@@ -37,7 +39,7 @@ data class WidgetForecast(
                 temperature = hour.temperature,
                 weatherCode = hour.weatherCode,
                 isDay = isDay,
-                description = WeatherCondition.from(hour.weatherCode, isDay).description,
+                descriptionRes = WeatherCondition.from(hour.weatherCode, isDay).kind.labelRes,
                 maximum = today?.maximum,
                 minimum = today?.minimum,
             )

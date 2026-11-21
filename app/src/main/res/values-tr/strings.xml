@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_description">Seçili konumun anlık sıcaklığı ve hava durumu</string>
+    <string name="widget_empty">Tahmini görmek için uygulamayı aç</string>
+    <string name="current_location">Mevcut konum</string>
+    <string name="action_add_city">Şehir ekle</string>
+    <string name="action_more">Diğer seçenekler</string>
+    <string name="menu_use_location">Konumumu kullan</string>
+    <string name="menu_remove_city">Bu şehri kaldır</string>
+    <string name="menu_quota">Kota</string>
+    <string name="menu_reload_week">7 günü yeniden yükle</string>
+    <string name="remove_title">Şehri kaldır</string>
+    <string name="remove_text">%1$s kayıtlı şehirlerinden kaldırılsın mı?</string>
+    <string name="action_remove">Kaldır</string>
+    <string name="action_cancel">Vazgeç</string>
+    <string name="reload_week_text">Bu işlem saatlik ve günlük tahminlerin tamamını yeniden indirir. Normal yenileme yalnızca 6 saati günceller.</string>
+    <string name="action_update_all">Tümünü güncelle</string>
+    <string name="location_settings">Konum ayarları</string>
+    <string name="app_permission">Uygulama izni</string>
+    <string name="loading_forecast">Gökyüzüne bakıyoruz…</string>
+    <string name="forecast_unavailable">Tahminler henüz yüklenemedi</string>
+    <string name="action_retry">Tekrar dene</string>
+    <string name="hourly_title">Saatlik tahmin</string>
+    <string name="action_refresh">Yenile ↻</string>
+    <string name="details_header">DETAYLAR</string>
+    <string name="daily_stale">Günlük tahmin eski. Yeni 7 gün için “Tümünü güncelle”yi kullan.</string>
+    <string name="full_fetched">7 günlük kayıt: %1$s</string>
+    <string name="six_fetched">Son 6 saat yenilemesi: %1$s</string>
+    <string name="refresh_note">Yenileme yalnızca bu saat dahil 6 saatlik tahmini değiştirir. Günlük tahminler korunur.</string>
+    <string name="attribution">Hava durumu: Open-Meteo · CC BY 4.0</string>
+    <string name="city_pages">Şehir %1$d / %2$d</string>
+    <string name="daily_title">7 günlük tahmin</string>
+    <string name="daily_expired">Kayıtlı günlük tahminin süresi doldu.</string>
+    <string name="action_collapse">Kısalt</string>
+    <string name="today">Bugün</string>
+    <string name="tomorrow">Yarın</string>
+    <string name="search_title">Şehir bul</string>
+    <string name="search_label">Şehir veya ilçe</string>
+    <string name="searching">Aranıyor…</string>
+    <string name="action_search">Ara</string>
+    <string name="action_close">Kapat</string>
+    <string name="search_none">Şehir bulunamadı.</string>
+    <string name="search_failed">Şehir araması başarısız. Tekrar dene.</string>
+    <string name="pattern_current_date">HH:mm · d MMMM EEEE</string>
+    <string name="percent">%%%1$s</string>
+    <string name="wind_unit">km/sa</string>
+    <string name="now">Şimdi</string>
+    <string name="hour_description">%1$s, %2$s, %3$s, %4$s, rüzgâr %5$s kilometre/saat</string>
+    <string name="detail_humidity">Nem</string>
+    <string name="detail_feels_like">Hissedilen</string>
+    <string name="detail_uv">UV</string>
+    <string name="detail_pressure">Basınç</string>
+    <string name="detail_precipitation">Yağış ihtimali</string>
+    <string name="wind_title">RÜZGÂR</string>
+    <string name="wind_unknown">Yön bilinmiyor</string>
+    <string name="wind_gusts">Hamle %1$s km/sa</string>
+    <string name="compass_north">K</string>
+    <string name="compass_south">G</string>
+    <string name="compass_west">B</string>
+    <string name="compass_east">D</string>
+    <string name="sun_title">GÜNEŞİN YOLU</string>
+    <string name="sunrise">Gün doğumu</string>
+    <string name="sunset">Gün batımı</string>
+    <string name="sun_no_data">Güneş verisi yok</string>
+    <string name="sun_day">Gündüz</string>
+    <string name="sun_night">Gece</string>
+    <string name="error_connection">Bağlantı kurulamadı. Kayıtlı veriler korunuyor.</string>
+    <string name="error_bad_response">Hava durumu servisi eksik yanıt döndürdü. Kayıtlı veriler korunuyor.</string>
+    <string name="error_rate_limited">İstek kotası doldu. Bir süre sonra tekrar dene; kayıtlı tahminlerin korunuyor.</string>
+    <string name="error_http">Hava durumu servisine ulaşılamadı (HTTP %1$d).</string>
+    <string name="error_city_limit">En fazla %1$d şehir kaydedebilirsin. Önce bir şehri kaldır.</string>
+    <string name="locating">Konum bulunuyor…</string>
+    <string name="location_denied">Konum izni verilmedi. Şehir seçerek devam edebilirsin.</string>
+    <string name="location_permission_missing">Konum izni verilmedi. Uygulama izinlerinden konuma erişimi açabilirsin.</string>
+    <string name="location_off">Telefonun konumu kapalı. Konum ayarlarından açıp tekrar dene.</string>
+    <string name="location_failed_precise">Konum alınamadı. Açık alanda tekrar dene veya konum ayarlarını kontrol et. Şehir seçerek de devam edebilirsin.</string>
+    <string name="location_failed_approximate">Yaklaşık konum alınamadı. Uygulama izninde kesin konuma izin vererek GPS\'i deneyebilir veya şehir seçebilirsin.</string>
+    <string name="usage_read_failed">Kullanım kaydı okunamadı.</string>
+    <string name="action_back">‹ Geri</string>
+    <string name="usage_reload">Sayacı yenile</string>
+    <string name="usage_title">API kullanımı</string>
+    <string name="usage_subtitle">Bu cihazın tahmini Open-Meteo tüketimi</string>
+    <string name="usage_disclaimer">Bu sayaç sağlayıcının gerçek kalan kotası değildir. Diğer cihazları ve ortak IP trafiğini göremez. Gönderilmeye çalışılan isteklerden hesaplanır; başarısız istekler de dahildir.</string>
+    <string name="usage_hour">Bu saat</string>
+    <string name="usage_day">Bugün</string>
+    <string name="usage_month">Bu ay</string>
+    <string name="usage_periods_note">Dönemler UTC takvimine göredir. Yüzdeler ücretsiz planın yayımlanmış limitlerine göre yaklaşık karşılaştırmadır; anlık kota erişimini garanti etmez.</string>
+    <string name="usage_month_details">Bu ayın ayrıntıları</string>
+    <string name="usage_full">Tam tahmin isteği</string>
+    <string name="usage_partial">6 saatlik yenileme</string>
+    <string name="usage_searches">Şehir araması</string>
+    <string name="usage_lifetime">Tüm zamanlar · hava durumu</string>
+    <string name="usage_units">%1$s birim</string>
+    <string name="usage_units_of">%1$s / %2$s birim</string>
+    <string name="usage_search_note">Şehir araması farklı bir uç noktadır; yukarıdaki hava durumu kota tahminine eklenmez.</string>
+    <string name="usage_how">Nasıl hesaplanıyor?</string>
+    <string name="usage_costs">7 günlük tam tahmin: %1$s birim\n6 saatlik yenileme: %2$s birim\nÖnbellekten gösterim: 0 birim</string>
+    <string name="usage_started">Kayıt başlangıcı: %1$s\nKayıt cihazda saklanır. Uygulama verisini silmek veya uygulamayı kaldırmak bu sayacı da siler.</string>
+    <string name="usage_pricing_link">Open-Meteo kota açıklaması ↗</string>
+    <string name="condition_clear_day">Açık ve güneşli</string>
+    <string name="condition_clear_night">Açık gece</string>
+    <string name="condition_mostly_clear">Çoğunlukla açık</string>
+    <string name="condition_partly_cloudy">Parçalı bulutlu</string>
+    <string name="condition_overcast">Kapalı</string>
+    <string name="condition_fog">Sisli</string>
+    <string name="condition_rime_fog">Kırağılı sis</string>
+    <string name="condition_light_drizzle">Hafif çiseleme</string>
+    <string name="condition_moderate_drizzle">Orta çiseleme</string>
+    <string name="condition_dense_drizzle">Yoğun çiseleme</string>
+    <string name="condition_light_freezing_drizzle">Hafif donan çiseleme</string>
+    <string name="condition_dense_freezing_drizzle">Yoğun donan çiseleme</string>
+    <string name="condition_light_rain">Hafif yağmur</string>
+    <string name="condition_moderate_rain">Orta yağmur</string>
+    <string name="condition_heavy_rain">Şiddetli yağmur</string>
+    <string name="condition_light_freezing_rain">Hafif donan yağmur</string>
+    <string name="condition_heavy_freezing_rain">Şiddetli donan yağmur</string>
+    <string name="condition_light_snow">Hafif kar</string>
+    <string name="condition_moderate_snow">Orta kar</string>
+    <string name="condition_heavy_snow">Yoğun kar</string>
+    <string name="condition_snow_grains">Kar taneleri</string>
+    <string name="condition_light_showers">Hafif sağanak</string>
+    <string name="condition_moderate_showers">Orta sağanak</string>
+    <string name="condition_violent_showers">Şiddetli sağanak</string>
+    <string name="condition_light_snow_showers">Hafif kar sağanağı</string>
+    <string name="condition_heavy_snow_showers">Yoğun kar sağanağı</string>
+    <string name="condition_thunderstorm">Gök gürültülü fırtına</string>
+    <string name="condition_thunderstorm_light_hail">Hafif dolulu fırtına</string>
+    <string name="condition_thunderstorm_heavy_hail">Şiddetli dolulu fırtına</string>
+    <string name="condition_unknown">Hava durumu bilinmiyor</string>
+    <plurals name="hourly_count">
+        <item quantity="one">%d SAAT</item>
+        <item quantity="other">%d SAAT</item>
+    </plurals>
+    <plurals name="usage_requests">
+        <item quantity="one">%d hava durumu isteği · tahmini tüketim</item>
+        <item quantity="other">%d hava durumu isteği · tahmini tüketim</item>
+    </plurals>
+    <string-array name="wind_directions">
+        <item>Kuzey</item>
+        <item>Kuzeydoğu</item>
+        <item>Doğu</item>
+        <item>Güneydoğu</item>
+        <item>Güney</item>
+        <item>Güneybatı</item>
+        <item>Batı</item>
+        <item>Kuzeybatı</item>
+    </string-array>
+</resources>

@@ -15,6 +15,9 @@ import com.google.android.gms.common.GoogleApiAvailability
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 import com.google.android.gms.tasks.CancellationTokenSource
+import com.weathercard.app.R
+import com.weathercard.app.UiText
+import com.weathercard.app.UserFacingException
 import com.weathercard.core.LocationFix
 import com.weathercard.core.LocationResolver
 import com.weathercard.core.Place
@@ -22,7 +25,6 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withTimeoutOrNull
-import java.io.IOException
 import kotlin.coroutines.resume
 import kotlin.math.round
 
@@ -33,8 +35,8 @@ class DeviceLocationProvider(private val context: Context, private val allowGoog
     @SuppressLint("MissingPermission")
     suspend fun locate(): Place {
         val fine = permitted(Manifest.permission.ACCESS_FINE_LOCATION)
-        if (!fine && !permitted(Manifest.permission.ACCESS_COARSE_LOCATION)) throw IOException("Konum izni verilmedi. Uygulama izinlerinden konuma erişimi açabilirsin.")
-        if (!LocationManagerCompat.isLocationEnabled(manager)) throw IOException("Telefonun konumu kapalı. Konum ayarlarından açıp tekrar dene.")
+        if (!fine && !permitted(Manifest.permission.ACCESS_COARSE_LOCATION)) throw locationError(R.string.location_permission_missing)
+        if (!LocationManagerCompat.isLocationEnabled(manager)) throw locationError(R.string.location_off)
         val enabled = manager.getProviders(true).filter {
             it == LocationManager.NETWORK_PROVIDER || (fine && it == LocationManager.GPS_PROVIDER)
         }
@@ -62,11 +64,12 @@ class DeviceLocationProvider(private val context: Context, private val allowGoog
         }
         enabled.forEach { provider -> providers += { nativeFix(provider)?.asFix() } }
         val result = LocationResolver(providers).find()
-        return result?.asPlace() ?: throw IOException(
-            if (fine) "Konum alınamadı. Açık alanda tekrar dene veya konum ayarlarını kontrol et. Şehir seçerek de devam edebilirsin."
-            else "Yaklaşık konum alınamadı. Uygulama izninde kesin konuma izin vererek GPS'i deneyebilir veya şehir seçebilirsin."
+        return result?.asPlace() ?: throw locationError(
+            if (fine) R.string.location_failed_precise else R.string.location_failed_approximate
         )
     }
+
+    private fun locationError(id: Int) = UserFacingException(UiText(id, locationHelp = true))
 
     @SuppressLint("MissingPermission")
     private suspend fun nativeFix(provider: String): Location? = suspendCancellableCoroutine { continuation ->
@@ -86,7 +89,7 @@ class DeviceLocationProvider(private val context: Context, private val allowGoog
     )
 
     private suspend fun LocationFix.asPlace(): Place {
-        val label = LocationNameResolver(context).resolve(latitude, longitude) ?: "Mevcut konum"
+        val label = LocationNameResolver(context).resolve(latitude, longitude) ?: context.getString(R.string.current_location)
         return Place(label, round(latitude * 100) / 100, round(longitude * 100) / 100, isCurrentLocation = true)
     }
 }
