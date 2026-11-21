@@ -47,7 +47,13 @@ class WeatherViewModel(application: Application) : AndroidViewModel(application)
     private val mutableState = MutableStateFlow(WeatherUiState(readSaved()))
     val state = mutableState.asStateFlow()
     private val selected: Place get() = mutableState.value.saved.current
-    init { ensureLoaded(selected) }
+    init { ensureAround(mutableState.value.saved) }
+
+    /** The visible city first, then its neighbours, so a swipe already shows their saved forecast. */
+    private fun ensureAround(saved: SavedPlaces) {
+        listOf(saved.selected, saved.selected + 1, saved.selected - 1)
+            .mapNotNull(saved.places::getOrNull).forEach(::ensureLoaded)
+    }
 
     /** Earlier versions stored a single place under separate keys; keep it as the first page. */
     private fun readSaved(): SavedPlaces {
@@ -74,7 +80,7 @@ class WeatherViewModel(application: Application) : AndroidViewModel(application)
         val saved = current.saved.select(index)
         save(saved)
         mutableState.update { it.copy(saved = saved, message = null) }
-        ensureLoaded(saved.current)
+        ensureAround(saved)
     }
 
     /** Opens a saved page's snapshot without blocking other pages. A city without cache downloads 7 days once. */
@@ -111,7 +117,7 @@ class WeatherViewModel(application: Application) : AndroidViewModel(application)
         val saved = current.saved.remove(current.page)
         save(saved)
         mutableState.update { it.copy(saved = saved, message = null) }
-        ensureLoaded(saved.current)
+        ensureAround(saved)
     }
 
     fun refresh() = runWeather { app.repository.refreshSixHours(selected) }

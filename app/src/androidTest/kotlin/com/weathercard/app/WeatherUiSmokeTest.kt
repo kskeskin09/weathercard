@@ -71,7 +71,8 @@ class WeatherUiSmokeTest {
         }
         app.getSharedPreferences("settings", 0).edit().clear().commit()
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
-            compose.waitUntil(15_000) { compose.onAllNodes(androidx.compose.ui.test.hasText("İstanbul")).fetchSemanticsNodes().isNotEmpty() }
+            // The header shows the saved city name at once; wait for the cached forecast itself.
+            compose.waitUntil(15_000) { compose.onAllNodesWithText("18°").fetchSemanticsNodes().isNotEmpty() }
             compose.onNodeWithText("İstanbul").assertIsDisplayed()
             compose.onAllNodesWithText("18°").onFirst().assertIsDisplayed()
             compose.onNodeWithContentDescription("Diğer seçenekler").performClick()
@@ -158,11 +159,13 @@ class WeatherUiSmokeTest {
             screenshot(app, "cities-first.png")
             compose.onNodeWithTag("city-pager").performTouchInput { swipeLeft() }
             compose.waitUntil(10_000) { compose.onAllNodesWithText("Ankara").fetchSemanticsNodes().isNotEmpty() }
+            compose.waitUntil(10_000) { compose.onAllNodesWithText("7°").fetchSemanticsNodes().isNotEmpty() }
             compose.onAllNodesWithText("7°").onFirst().assertIsDisplayed()
             compose.onNodeWithContentDescription("Şehir 2 / 3").assertIsDisplayed()
             screenshot(app, "cities-second.png")
             compose.onNodeWithTag("city-pager").performTouchInput { swipeRight() }
             compose.waitUntil(10_000) { compose.onAllNodesWithText("İstanbul").fetchSemanticsNodes().isNotEmpty() }
+            compose.waitUntil(10_000) { compose.onAllNodesWithText("18°").fetchSemanticsNodes().isNotEmpty() }
         }
     }
 
