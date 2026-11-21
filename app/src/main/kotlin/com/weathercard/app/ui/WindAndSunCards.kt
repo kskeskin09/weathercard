@@ -32,7 +32,7 @@ import kotlin.math.sin
 
 private val CardShape = RoundedCornerShape(28.dp)
 private val Quiet = Color(0xFFBED1E4)
-private fun Modifier.glassCard() = fillMaxWidth().background(Color.White.copy(alpha = .07f), CardShape)
+private fun Modifier.glassCard() = fillMaxWidth().background(CardFill, CardShape)
     .border(1.dp, Color.White.copy(alpha = .09f), CardShape)
 
 @Composable

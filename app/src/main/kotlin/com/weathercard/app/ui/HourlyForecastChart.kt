@@ -56,7 +56,7 @@ fun HourlyForecastChart(hours: List<HourWeather>, currentHour: Long, zone: ZoneI
     LazyRow(
         state = scroll,
         modifier = modifier.fillMaxWidth().clip(RoundedCornerShape(28.dp))
-            .background(Color.White.copy(alpha = .075f))
+            .background(CardFill)
             .border(1.dp, Color.White.copy(alpha = .1f), RoundedCornerShape(28.dp)),
         contentPadding = PaddingValues(vertical = 12.dp),
     ) {

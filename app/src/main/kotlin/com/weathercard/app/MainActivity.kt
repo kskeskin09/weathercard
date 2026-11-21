@@ -41,6 +41,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.weathercard.app.ui.WeatherGlyph
 import com.weathercard.app.ui.UsageScreen
 import com.weathercard.app.ui.WeatherBackdrop
+import com.weathercard.app.ui.CardFill
 import com.weathercard.app.ui.HourlyForecastChart
 import com.weathercard.app.ui.WindCard
 import com.weathercard.app.ui.SunTimesCard
@@ -283,7 +284,7 @@ private fun CurrentCard(hour: HourWeather?, now: Instant, zone: ZoneId) {
 @Composable
 private fun ForecastDaysCard(days: List<DayWeather>, today: LocalDate, enabled: Boolean, onFullRefresh: () -> Unit) {
     var expanded by remember(days) { mutableStateOf(false) }
-    Column(Modifier.fillMaxWidth().background(Color.White.copy(alpha = .07f), RoundedCornerShape(28.dp))
+    Column(Modifier.fillMaxWidth().background(CardFill, RoundedCornerShape(28.dp))
         .border(1.dp, Color.White.copy(alpha = .07f), RoundedCornerShape(28.dp)).padding(16.dp)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text(stringResource(R.string.daily_title), color = Muted, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
