@@ -56,6 +56,8 @@ import java.time.temporal.ChronoUnit
 class WeatherUiSmokeTest {
     @get:Rule val compose = createEmptyComposeRule()
 
+    // Seeded-cache tests turn the location page off: the test APK may already hold location
+    // permission, and a fresh start would otherwise locate the emulator and add a page.
     @Test fun cachedDashboardAndAllConditionIconsRender() {
         val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as WeatherApplication
         val place = Place("İstanbul", 41.0082, 28.9784)
@@ -74,7 +76,7 @@ class WeatherUiSmokeTest {
             repeat(3) { app.usage.record(RequestKind.SIX_HOURS) }
             app.usage.record(RequestKind.GEOCODING)
         }
-        app.getSharedPreferences("settings", 0).edit().clear().commit()
+        app.getSharedPreferences("settings", 0).edit().clear().putBoolean("location_page_enabled", false).commit()
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             // The header shows the saved city name at once; wait for the cached forecast itself.
             compose.waitUntil(15_000) { compose.onAllNodesWithText("18°").fetchSemanticsNodes().isNotEmpty() }
@@ -171,7 +173,7 @@ class WeatherUiSmokeTest {
             }
         }
         val saved = kotlinx.serialization.json.Json.encodeToString(SavedPlaces.serializer(), SavedPlaces(listOf(istanbul, ankara, izmir)))
-        app.getSharedPreferences("settings", 0).edit().clear().putString("places_v1", saved).commit()
+        app.getSharedPreferences("settings", 0).edit().clear().putString("places_v1", saved).putBoolean("location_page_enabled", false).commit()
         ActivityScenario.launch(MainActivity::class.java).use {
             compose.waitUntil(15_000) { compose.onAllNodesWithText("18°").fetchSemanticsNodes().isNotEmpty() }
             compose.onNodeWithContentDescription(app.getString(R.string.city_pages, 1, 3)).assertIsDisplayed()
@@ -261,7 +263,7 @@ class WeatherUiSmokeTest {
                     WeatherSnapshot(Place("İstanbul", 41.0082, 28.9784, isCurrentLocation = true), "Europe/Istanbul", hours, days, reference.epochSecond)
                 )
             }
-            app.getSharedPreferences("settings", 0).edit().clear().putBoolean("is_current", true).commit()
+            app.getSharedPreferences("settings", 0).edit().clear().putBoolean("is_current", true).putBoolean("location_page_enabled", false).commit()
             ActivityScenario.launch(MainActivity::class.java).use { scenario ->
                 scenario.onActivity { activity -> activity.setContent { WeatherCardTheme { WeatherScreen(previewNow = reference) } } }
                 compose.waitUntil(15_000) { compose.onAllNodesWithText("İstanbul").fetchSemanticsNodes().isNotEmpty() }
@@ -291,7 +293,7 @@ class WeatherUiSmokeTest {
         runBlocking {
             com.weathercard.app.data.DiskForecastStore(File(app.filesDir, "forecasts")).write(WeatherSnapshot(place, "Europe/Istanbul", hours, days, now.epochSecond))
         }
-        app.getSharedPreferences("settings", 0).edit().clear().commit()
+        app.getSharedPreferences("settings", 0).edit().clear().putBoolean("location_page_enabled", false).commit()
         val turkish = java.util.Locale.forLanguageTag("tr-TR")
         val previous = java.util.Locale.getDefault()
         java.util.Locale.setDefault(turkish)
