@@ -164,6 +164,7 @@ class WeatherUiSmokeTest {
             compose.onNodeWithTag("city-pager").performTouchInput { swipeLeft() }
             compose.waitUntil(10_000) { compose.onAllNodesWithText("Ankara").fetchSemanticsNodes().isNotEmpty() }
             compose.waitUntil(10_000) { compose.onAllNodesWithText("7°").fetchSemanticsNodes().isNotEmpty() }
+            compose.waitUntil(5_000) { compose.onAllNodesWithTag("forecast-list").fetchSemanticsNodes().size == 1 }
             compose.onAllNodesWithText("7°").onFirst().assertIsDisplayed()
             compose.onNodeWithContentDescription(app.getString(R.string.city_pages, 2, 3)).assertIsDisplayed()
             screenshot(app, "cities-second.png")
