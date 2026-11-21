@@ -20,7 +20,6 @@
     <string name="forecast_unavailable">The forecast could not be loaded yet</string>
     <string name="action_retry">Try again</string>
     <string name="hourly_title">Hourly forecast</string>
-    <string name="details_header">DETAILS</string>
     <string name="daily_stale">The daily forecast is out of date. It refreshes by itself every hour while the app is open; use “Refresh all” in the ⋮ menu to refresh now.</string>
     <string name="full_fetched">7-day data: %1$s</string>
     <string name="six_fetched">Last 6-hour refresh: %1$s</string>
@@ -28,7 +27,9 @@
     <string name="city_pages">City %1$d of %2$d</string>
     <string name="daily_title">7-day forecast</string>
     <string name="daily_expired">The saved daily forecast has expired.</string>
-    <string name="action_collapse">Show less</string>
+    <string name="day_show_hours">Show hourly forecast</string>
+    <string name="day_hide_hours">Hide hourly forecast</string>
+    <string name="day_no_hours">No hourly forecast is saved for this day.</string>
     <string name="today">Today</string>
     <string name="tomorrow">Tomorrow</string>
     <string name="search_title">Find a city</string>
