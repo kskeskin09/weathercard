@@ -1,4 +1,4 @@
-name: Android checks and approved nightly
+name: Android checks and approved releases
 on:
   push:
     branches: [main]
@@ -7,6 +7,11 @@ on:
     inputs:
       publish_nightly:
         description: 'Screenshots were approved; publish the nightly'
+        type: boolean
+        required: true
+        default: false
+      publish_stable:
+        description: 'Screenshots were approved; publish the stable release v<version in gradle.properties>'
         type: boolean
         required: true
         default: false
@@ -35,10 +40,30 @@ jobs:
       - name: Set application version
         id: version
         shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PUBLISH_STABLE: ${{ github.event_name == 'workflow_dispatch' && inputs.publish_stable }}
+          PUBLISH_NIGHTLY: ${{ github.event_name == 'workflow_dispatch' && inputs.publish_nightly }}
         run: |
           BASE_VERSION=$(sed -n 's/^weatherVersionName=//p' gradle.properties | tr -d '\r')
-          VERSION_NAME="${BASE_VERSION}-nightly.$(TZ=Europe/Istanbul date +%Y%m%d).${GITHUB_RUN_NUMBER}"
+          # One run-number counter for nightly and stable builds keeps versionCode increasing,
+          # so any newer build installs over any older one.
           VERSION_CODE=$((100000 + GITHUB_RUN_NUMBER))
+          if [[ "$PUBLISH_STABLE" == "true" ]]; then
+            [[ "$GITHUB_REF" == "refs/heads/main" ]] || { echo "Stable releases are published only from main"; exit 1; }
+            [[ "$PUBLISH_NIGHTLY" != "true" ]] || { echo "Choose either nightly or stable, not both"; exit 1; }
+            [[ "$BASE_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "Base version must be plain SemVer"; exit 1; }
+            NOTES="release-notes/v${BASE_VERSION}.md"
+            test -s "$NOTES" || { echo "Missing release notes: $NOTES"; exit 1; }
+            if gh release view "v${BASE_VERSION}" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+              echo "Release v${BASE_VERSION} already exists; bump weatherVersionName first"; exit 1
+            fi
+            VERSION_NAME="$BASE_VERSION"
+            echo "apk=weathercard-${BASE_VERSION}.apk" >> "$GITHUB_OUTPUT"
+          else
+            VERSION_NAME="${BASE_VERSION}-nightly.$(TZ=Europe/Istanbul date +%Y%m%d).${GITHUB_RUN_NUMBER}"
+            echo "apk=weathercard-nightly.apk" >> "$GITHUB_OUTPUT"
+          fi
           echo "name=$VERSION_NAME" >> "$GITHUB_OUTPUT"
           echo "code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
       - name: Prepare signing key
@@ -62,12 +87,14 @@ jobs:
           ./gradlew :core:test :app:testDebugUnitTest :app:lintDebug :app:assembleRelease -PweatherVersionName="$VERSION_NAME" -PweatherVersionCode="$VERSION_CODE" --stacktrace
       - name: Verify APK signature and prepare download
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        env:
+          APK_NAME: ${{ steps.version.outputs.apk }}
         run: |
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose app/build/outputs/apk/release/app-release.apk
           mkdir -p dist
-          cp app/build/outputs/apk/release/app-release.apk dist/weathercard-nightly.apk
+          cp app/build/outputs/apk/release/app-release.apk "dist/$APK_NAME"
           cd dist
-          sha256sum weathercard-nightly.apk > weathercard-nightly.apk.sha256
+          sha256sum "$APK_NAME" > "$APK_NAME.sha256"
       - name: Update the single nightly release
         if: github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch' && inputs.publish_nightly == true
         env:
@@ -94,6 +121,25 @@ jobs:
           else
             gh release create nightly dist/weathercard-nightly.apk dist/weathercard-nightly.apk.sha256 --target "$GITHUB_SHA" --title "WeatherCard Nightly" --notes-file "$RUNNER_TEMP/nightly-notes.md" --prerelease --repo "$GITHUB_REPOSITORY"
           fi
+      - name: Publish the stable release
+        if: github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch' && inputs.publish_stable == true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION_NAME: ${{ steps.version.outputs.name }}
+          VERSION_CODE: ${{ steps.version.outputs.code }}
+          APK_NAME: ${{ steps.version.outputs.apk }}
+        shell: bash
+        run: |
+          {
+            cat "release-notes/v${VERSION_NAME}.md"
+            echo
+            echo "---"
+            echo
+            echo "- Version: **$VERSION_NAME** (code: $VERSION_CODE), Android 8.0 or newer"
+            echo "- Commit: $GITHUB_SHA"
+            echo "- Checks: unit tests, Android lint, release build and APK signature verification."
+          } > "$RUNNER_TEMP/stable-notes.md"
+          gh release create "v${VERSION_NAME}" "dist/$APK_NAME" "dist/$APK_NAME.sha256" --target "$GITHUB_SHA" --title "WeatherCard ${VERSION_NAME}" --notes-file "$RUNNER_TEMP/stable-notes.md" --latest --repo "$GITHUB_REPOSITORY"
       - uses: actions/upload-artifact@v4
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         with:

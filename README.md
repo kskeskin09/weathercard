@@ -23,12 +23,12 @@ Requires Android 8.0 (API 26) or newer.
 
 ## Install
 
-1. Open the [latest nightly release](https://github.com/kskeskin09/weathercard/releases/tag/nightly) on your phone.
-2. Download **weathercard-nightly.apk** and open it.
+1. Open the [latest release](https://github.com/kskeskin09/weathercard/releases/latest) on your phone.
+2. Download the **weathercard-x.y.z.apk** file and open it.
 3. If Android asks, allow your browser to install apps from unknown sources.
 
-Every nightly is signed with the same key, so a newer nightly installs over the existing app and keeps your data.
-Nightly builds are test builds. A stable, versioned release will be published separately.
+Every build is signed with the same key, so a newer version installs over the existing app and keeps your data.
+Want to try changes early? The [nightly release](https://github.com/kskeskin09/weathercard/releases/tag/nightly) holds the latest test build; it can replace a stable version and the other way round, as long as the one you install is newer.
 
 ## Privacy
 
@@ -61,6 +61,7 @@ All builds, tests, lint and APK signing run on **GitHub Actions**; there is no n
 
 - `android.yml` runs on every push and pull request: unit tests, Android lint and a release build. On `main` it also produces a signed candidate APK, but it does not publish anything automatically.
 - `ui-smoke.yml` (manual) runs the UI tests on an Android emulator and saves screenshots as artifacts.
+- Running `android.yml` by hand on `main` with `publish_stable` builds a release named exactly after the version in `gradle.properties` and publishes it as the GitHub release `vX.Y.Z`, using the notes in `release-notes/vX.Y.Z.md`. It refuses to run if that release already exists or the notes are missing. Running it with `publish_nightly` updates the single `nightly` prerelease instead.
 - `publish-nightly.yml` (manual) publishes an already tested, signed APK from a successful `main` run to the single `nightly` release without rebuilding it.
 
 ```sh
@@ -71,7 +72,7 @@ gh workflow run ui-smoke.yml --ref main --repo kskeskin09/weathercard
 The toolchain is pinned to JDK 17, Android SDK 35 and Gradle 8.11.1. You can still open the project in Android Studio to read or edit the code.
 The signing key and its password are stored only as GitHub Secrets and are never committed to the repository. Pull requests are built without signing.
 
-Version names look like `0.1.0-nightly.YYYYMMDD.N`; the base version lives in `gradle.properties` and is shown at the bottom of the main screen.
+Stable versions are plain SemVer (`0.1.0`) and nightly builds look like `0.2.0-nightly.YYYYMMDD.N`. The base version lives in `gradle.properties` and is shown at the bottom of the main screen; after a stable release it is bumped so that later nightlies point at the next version. Nightly and stable builds share one increasing Android version code.
 
 ## Project structure
 
