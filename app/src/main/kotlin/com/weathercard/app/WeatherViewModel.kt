@@ -41,6 +41,8 @@ data class WeatherUiState(
     val usage: UsageSummary? = null,
     val usageError: UiText? = null,
     val status: UiText? = null,
+    /** Settings: show the page that follows the device location. */
+    val locationPage: Boolean = true,
 ) {
     val places: List<Place> get() = saved.places
     val page: Int get() = saved.selected
@@ -51,10 +53,39 @@ data class WeatherUiState(
 class WeatherViewModel(application: Application) : AndroidViewModel(application) {
     private val app = application as WeatherApplication
     private val preferences = application.getSharedPreferences("settings", 0)
-    private val mutableState = MutableStateFlow(WeatherUiState(readSaved()))
+    private val mutableState = MutableStateFlow(WeatherUiState(readSaved(), locationPage = SavedPlacesPreferences.locationPageEnabled(preferences)))
     val state = mutableState.asStateFlow()
     private val selected: Place get() = mutableState.value.saved.current
-    init { ensureAround(mutableState.value.saved) }
+    init {
+        // A new ViewModel means the app was started fresh (e.g. after being swiped away from
+        // recents): open on the location page and, if permission is already there, locate once.
+        if (mutableState.value.locationPage) {
+            val start = mutableState.value.saved.startPage()
+            if (start != mutableState.value.saved) { save(start); mutableState.update { it.copy(saved = start) } }
+        }
+        ensureAround(mutableState.value.saved)
+        if (mutableState.value.locationPage && hasLocationPermission()) useLocation()
+    }
+
+    private fun hasLocationPermission() =
+        ContextCompat.checkSelfPermission(app, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+
+    /**
+     * Turning the location page off removes it and keeps the saved cities. Turning it on only stores
+     * the choice; the screen then asks for permission and calls [useLocation].
+     */
+    fun setLocationPage(enabled: Boolean) {
+        SavedPlacesPreferences.setLocationPageEnabled(preferences, enabled)
+        mutableState.update { it.copy(locationPage = enabled) }
+        if (enabled) return
+        val current = mutableState.value.saved
+        val saved = current.withoutCurrentLocation() ?: SavedPlaces(listOf(DEFAULT_CITY))
+        if (saved == current) return
+        save(saved)
+        mutableState.update { it.copy(saved = saved, message = null) }
+        ensureAround(saved)
+        viewModelScope.launch { refreshWidget() }
+    }
 
     /** The visible city first, then its neighbours, so a swipe already shows their saved forecast. */
     private fun ensureAround(saved: SavedPlaces) {
@@ -215,7 +246,8 @@ class WeatherViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun useLocation() {
-        if (ContextCompat.checkSelfPermission(app, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+        if (!mutableState.value.locationPage) return
+        if (!hasLocationPermission()) {
             permissionDenied(); return
         }
         runWeather(status = UiText(R.string.locating), current = true) {
@@ -226,3 +258,4 @@ class WeatherViewModel(application: Application) : AndroidViewModel(application)
 }
 
 private const val SEARCH_DEBOUNCE_MILLIS = 350L
+private val DEFAULT_CITY = Place("İstanbul", 41.0082, 28.9784)

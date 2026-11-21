@@ -40,6 +40,7 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.weathercard.app.ui.WeatherGlyph
 import com.weathercard.app.ui.UsageScreen
+import com.weathercard.app.ui.SettingsScreen
 import com.weathercard.app.ui.WeatherBackdrop
 import com.weathercard.app.ui.HourlyForecastChart
 import com.weathercard.app.ui.WindCard
@@ -93,15 +94,23 @@ internal fun WeatherScreen(vm: WeatherViewModel = viewModel(), previewNow: Insta
     var showSearch by remember { mutableStateOf(false) }
     var confirmFull by remember { mutableStateOf(false) }
     var showUsage by remember { mutableStateOf(false) }
+    var showSettings by remember { mutableStateOf(false) }
     var showMenu by remember { mutableStateOf(false) }
     var confirmRemove by remember { mutableStateOf(false) }
+    val location = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { permissions ->
+        if (permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true || permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true) vm.useLocation() else vm.permissionDenied()
+    }
+    if (showSettings) {
+        SettingsScreen(state.locationPage, onBack = { showSettings = false }, onLocationPageChange = { enabled ->
+            vm.setLocationPage(enabled)
+            if (enabled) location.launch(arrayOf(Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.ACCESS_FINE_LOCATION))
+        })
+        return
+    }
     if (showUsage) {
         LaunchedEffect(Unit) { vm.loadUsage() }
         UsageScreen(state.usage, state.usageError, onBack = { showUsage = false }, onReload = vm::loadUsage)
         return
-    }
-    val location = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { permissions ->
-        if (permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true || permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true) vm.useLocation() else vm.permissionDenied()
     }
     // Advancing the display clock never makes a network request.
     var now by remember(previewNow) { mutableStateOf(previewNow ?: Instant.now()) }
@@ -159,13 +168,14 @@ internal fun WeatherScreen(vm: WeatherViewModel = viewModel(), previewNow: Insta
                 Box {
                     IconButton(onClick = { showMenu = true }, modifier = Modifier.semantics { contentDescription = moreOptions }) { Text("⋮", fontSize = 28.sp) }
                     DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
-                        DropdownMenuItem(text = { Text(stringResource(R.string.menu_use_location)) }, enabled = !state.busy, onClick = {
+                        if (state.locationPage) DropdownMenuItem(text = { Text(stringResource(R.string.menu_use_location)) }, enabled = !state.busy, onClick = {
                             showMenu = false; location.launch(arrayOf(Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.ACCESS_FINE_LOCATION))
                         })
                         DropdownMenuItem(text = { Text(addCity) }, enabled = state.saved.canAdd, onClick = { showMenu = false; showSearch = true })
                         if (state.places.size > 1) DropdownMenuItem(text = { Text(stringResource(R.string.menu_remove_city)) }, enabled = !state.busy,
                             onClick = { showMenu = false; confirmRemove = true })
                         DropdownMenuItem(text = { Text(stringResource(R.string.menu_quota)) }, onClick = { showMenu = false; showUsage = true })
+                        DropdownMenuItem(text = { Text(stringResource(R.string.menu_settings)) }, onClick = { showMenu = false; showSettings = true })
                         DropdownMenuItem(text = { Text(stringResource(R.string.menu_reload_week)) }, enabled = !state.busy, onClick = { showMenu = false; confirmFull = true })
                     }
                 }

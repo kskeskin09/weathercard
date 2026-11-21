@@ -18,6 +18,7 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.hasTestTag
@@ -196,6 +197,41 @@ class WeatherUiSmokeTest {
             compose.waitUntil(10_000) { compose.onAllNodesWithText("18°").fetchSemanticsNodes().isNotEmpty() }
             screenshot(app, "cities-chart-swipe.png")
         }
+    }
+
+    @Test fun freshStartOpensLocationPageAndSettingRemovesIt() {
+        val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as WeatherApplication
+        val zone = ZoneId.of("Europe/Istanbul")
+        val now = Instant.now()
+        val first = now.truncatedTo(ChronoUnit.HOURS).epochSecond
+        val today = now.atZone(zone).toLocalDate()
+        val here = Place("İstanbul", 41.0082, 28.9784, isCurrentLocation = true)
+        val ankara = Place("Ankara", 39.9334, 32.8597)
+        listOf(here to 18.0, ankara to 7.0).forEach { (place, temperature) ->
+            val hours = (0..167).map { i -> HourWeather(first + i * 3600, temperature, temperature - 1, 60.0,
+                10.0, 0.0, 1, 30.0, 1015.0, 12000.0, 10.0, 200.0, 18.0, 2.0, true) }
+            val days = (0..6).map { i -> DayWeather(today.plusDays(i.toLong()).toString(), 1, temperature - 5, temperature + 3, 10.0, 0.0, 12.0, null, null, 2.0) }
+            runBlocking {
+                com.weathercard.app.data.DiskForecastStore(File(app.filesDir, "forecasts"))
+                    .write(WeatherSnapshot(place, "Europe/Istanbul", hours, days, now.epochSecond))
+            }
+        }
+        // Ankara was the last page seen before the app was swiped away.
+        val saved = kotlinx.serialization.json.Json.encodeToString(SavedPlaces.serializer(), SavedPlaces(listOf(here, ankara), selected = 1))
+        app.getSharedPreferences("settings", 0).edit().clear().putString("places_v1", saved).commit()
+        ActivityScenario.launch(MainActivity::class.java).use {
+            compose.waitUntil(15_000) { compose.onAllNodesWithText("18°").fetchSemanticsNodes().isNotEmpty() }
+            compose.onNodeWithContentDescription(app.getString(R.string.city_pages, 1, 2)).assertIsDisplayed()
+            compose.onNodeWithContentDescription(app.getString(R.string.action_more)).performClick()
+            compose.onNodeWithText(app.getString(R.string.menu_settings)).performClick()
+            compose.onNodeWithTag("location-page-setting").performClick()
+            screenshot(app, "settings.png")
+            compose.onNodeWithText(app.getString(R.string.action_back)).performClick()
+            compose.waitUntil(10_000) { compose.onAllNodesWithText("Ankara").fetchSemanticsNodes().isNotEmpty() }
+            compose.waitUntil(10_000) { compose.onAllNodesWithText("7°").fetchSemanticsNodes().isNotEmpty() }
+            org.junit.Assert.assertTrue(compose.onAllNodesWithContentDescription(app.getString(R.string.city_pages, 1, 2)).fetchSemanticsNodes().isEmpty())
+        }
+        org.junit.Assert.assertFalse(app.getSharedPreferences("settings", 0).getBoolean("location_page_enabled", true))
     }
 
     @Test fun renderAtmospherePreviews() {

@@ -144,4 +144,8 @@
         <item>Batı</item>
         <item>Kuzeybatı</item>
     </string-array>
+    <string name="menu_settings">Ayarlar</string>
+    <string name="settings_title">Ayarlar</string>
+    <string name="settings_location_page">Konum sayfası</string>
+    <string name="settings_location_page_note">Bulunduğun yere göre değişen ilk sayfa. Uygulama yeniden açıldığında bu sayfadan başlar.</string>
 </resources>

@@ -37,6 +37,17 @@ data class SavedPlaces(val places: List<Place>, val selected: Int = 0) {
         return SavedPlaces((listOf(located) + rest).take(MAX), 0)
     }
 
+    /** Drops the current-location page; null when it was the only page. */
+    fun withoutCurrentLocation(): SavedPlaces? {
+        if (places.none { it.isCurrentLocation }) return this
+        val rest = places.filterNot { it.isCurrentLocation }
+        if (rest.isEmpty()) return null
+        return SavedPlaces(rest, (selected - 1).coerceIn(rest.indices))
+    }
+
+    /** On a fresh app start the current-location page, when there is one, is shown first. */
+    fun startPage(): SavedPlaces = if (places.first().isCurrentLocation) select(0) else this
+
     /** The last remaining city cannot be removed. */
     fun remove(index: Int): SavedPlaces {
         if (places.size <= 1 || index !in places.indices) return this
