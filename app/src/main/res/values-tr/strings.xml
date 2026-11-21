@@ -23,7 +23,6 @@
     <string name="daily_stale">Günlük tahmin eski. Uygulama açıkken saatte bir kendiliğinden yenilenir; hemen yenilemek için ⋮ menüsünden “Hepsini yenile”yi kullan.</string>
     <string name="full_fetched">7 günlük kayıt: %1$s</string>
     <string name="six_fetched">Son 6 saat yenilemesi: %1$s</string>
-    <string name="refresh_note">Aşağı çekince bu saat dahil 6 saatlik tahmin yenilenir. Uygulama açıkken 7 günlük tahmin saatte bir kendiliğinden güncellenir.</string>
     <string name="attribution">Hava durumu: Open-Meteo · CC BY 4.0</string>
     <string name="city_pages">Şehir %1$d / %2$d</string>
     <string name="daily_title">7 günlük tahmin</string>

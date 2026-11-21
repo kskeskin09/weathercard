@@ -231,7 +231,6 @@ private fun ForecastPage(
                     }
                     Text(stringResource(R.string.full_fetched, formatTime(snapshot.fullFetchedAt, zone)), color = Muted, fontSize = 11.sp)
                     snapshot.sixHoursFetchedAt?.let { Text(stringResource(R.string.six_fetched, formatTime(it, zone)), color = Muted, fontSize = 11.sp) }
-                    Text(stringResource(R.string.refresh_note), color = Muted, fontSize = 11.sp)
                 }
             }
         }

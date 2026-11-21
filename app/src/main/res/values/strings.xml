@@ -24,7 +24,6 @@
     <string name="daily_stale">The daily forecast is out of date. It refreshes by itself every hour while the app is open; use “Refresh all” in the ⋮ menu to refresh now.</string>
     <string name="full_fetched">7-day data: %1$s</string>
     <string name="six_fetched">Last 6-hour refresh: %1$s</string>
-    <string name="refresh_note">Pull down to refresh the 6 hours starting with the current one. While the app is open, the 7-day forecast updates by itself every hour.</string>
     <string name="attribution">Weather data: Open-Meteo · CC BY 4.0</string>
     <string name="city_pages">City %1$d of %2$d</string>
     <string name="daily_title">7-day forecast</string>
