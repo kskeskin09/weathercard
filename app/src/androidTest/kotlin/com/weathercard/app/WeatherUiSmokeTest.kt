@@ -26,6 +26,8 @@ import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.ComposeTimeoutException
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.graphics.asAndroidBitmap
@@ -251,5 +253,33 @@ class WeatherUiSmokeTest {
                 screenshot(app, "turkish-preview.png")
             }
         } finally { java.util.Locale.setDefault(previous) }
+    }
+    /** Tapping a day in the 7-day card opens that day's 24 cached hours below it, and tapping again closes them. */
+    @Test fun tappingADayShowsItsHours() {
+        val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as WeatherApplication
+        val zone = ZoneId.of("Europe/Istanbul")
+        val now = Instant.now()
+        val today = now.atZone(zone).toLocalDate()
+        val start = today.atStartOfDay(zone).toEpochSecond()
+        val place = Place("İstanbul", 41.0082, 28.9784)
+        val hours = (0..167).map { i -> HourWeather(start + i * 3600, 10.0 + kotlin.math.sin(i / 4.0) * 5, 9.0, 60.0,
+            20.0, 0.0, listOf(0, 2, 61, 3)[i / 6 % 4], 30.0, 1015.0, 12000.0, 10.0, 200.0, 18.0, 2.0, (i % 24) in 7..18) }
+        val days = (0..6).map { i -> DayWeather(today.plusDays(i.toLong()).toString(), 2, 6.0, 15.0, 20.0, 0.0, 12.0, null, null, 2.0) }
+        runBlocking {
+            com.weathercard.app.data.DiskForecastStore(File(app.filesDir, "forecasts")).write(WeatherSnapshot(place, "Europe/Istanbul", hours, days, now.epochSecond))
+        }
+        app.getSharedPreferences("settings", 0).edit().clear().commit()
+        ActivityScenario.launch(MainActivity::class.java).use {
+            compose.waitUntil(15_000) { compose.onAllNodesWithTag("forecast-list").fetchSemanticsNodes().isNotEmpty() }
+            val tomorrow = app.getString(R.string.tomorrow)
+            compose.onNodeWithTag("forecast-list").performScrollToNode(hasText(tomorrow))
+            compose.onNodeWithText(tomorrow).performClick()
+            compose.waitUntil(5_000) { compose.onAllNodesWithTag("day-hours").fetchSemanticsNodes().isNotEmpty() }
+            compose.onNodeWithTag("forecast-list").performScrollToNode(hasTestTag("day-hours"))
+            compose.onNodeWithTag("day-hours").assertIsDisplayed()
+            screenshot(app, "day-expanded.png")
+            compose.onNodeWithText(tomorrow).performClick()
+            compose.waitUntil(5_000) { compose.onAllNodesWithTag("day-hours").fetchSemanticsNodes().isEmpty() }
+        }
     }
 }

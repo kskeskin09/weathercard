@@ -37,11 +37,15 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 import kotlin.math.roundToInt
 
-/** Virtualized hour columns share matching cubic segments, so the curve remains continuous. */
+/**
+ * Virtualized hour columns share matching cubic segments, so the curve remains continuous.
+ * [startAt] is the first hour drawn; the main chart starts at the current hour, while a single day's
+ * chart starts at midnight and still marks [currentHour] as "Now" when it falls on that day.
+ */
 @Composable
-fun HourlyForecastChart(hours: List<HourWeather>, currentHour: Long, zone: ZoneId, modifier: Modifier = Modifier) {
-    // Past hours are never drawn: the curve starts at the current hour and the latest hour stays on the right.
-    val ordered = hours.filter { it.time >= currentHour }.sortedBy { it.time }
+fun HourlyForecastChart(hours: List<HourWeather>, currentHour: Long, zone: ZoneId, modifier: Modifier = Modifier, startAt: Long = currentHour) {
+    // Past hours are never drawn: the curve starts at [startAt] and the latest hour stays on the right.
+    val ordered = hours.filter { it.time >= startAt }.sortedBy { it.time }
     if (ordered.isEmpty()) return
     val temperatures = ordered.mapNotNull { it.temperature }
     val low = temperatures.minOrNull() ?: 0.0
@@ -50,8 +54,9 @@ fun HourlyForecastChart(hours: List<HourWeather>, currentHour: Long, zone: ZoneI
     val center = (high + low) / 2
     fun y(index: Int): Float = (64 - (((ordered[index.coerceIn(0, ordered.lastIndex)].temperature ?: center) - center) / range) * 58).toFloat()
     val scroll = rememberLazyListState()
-    // When the clock passes an hour the old first column disappears; keep "Now" at the left edge.
-    LaunchedEffect(currentHour) { scroll.scrollToItem(0) }
+    // When the clock passes an hour the old first column disappears; keep "Now" at the left edge
+    // (a whole-day chart for today opens scrolled to the current hour).
+    LaunchedEffect(currentHour) { scroll.scrollToItem(ordered.indexOfFirst { it.time == currentHour }.coerceAtLeast(0)) }
     val locale = Locale.getDefault()
     LazyRow(
         state = scroll,

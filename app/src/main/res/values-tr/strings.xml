@@ -32,6 +32,9 @@
     <string name="daily_title">7 günlük tahmin</string>
     <string name="daily_expired">Kayıtlı günlük tahminin süresi doldu.</string>
     <string name="action_collapse">Kısalt</string>
+    <string name="day_show_hours">Saatlik tahmini göster</string>
+    <string name="day_hide_hours">Saatlik tahmini gizle</string>
+    <string name="day_no_hours">Bu gün için kayıtlı saatlik tahmin yok.</string>
     <string name="today">Bugün</string>
     <string name="tomorrow">Yarın</string>
     <string name="search_title">Şehir bul</string>

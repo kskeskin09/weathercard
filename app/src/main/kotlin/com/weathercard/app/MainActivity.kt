@@ -10,7 +10,14 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -229,7 +236,7 @@ private fun ForecastPage(
             }
             val today = now.atZone(zone).toLocalDate()
             val days = snapshot.days.filter { !LocalDate.parse(it.date).isBefore(today) }
-            item { ForecastDaysCard(days, today, !state.busy, onFullRefresh) }
+            item { ForecastDaysCard(days, today, !state.busy, onFullRefresh, snapshot.hours, hour, zone) }
             item { Text(stringResource(R.string.details_header), color = Muted, fontSize = 10.sp, letterSpacing = 1.5.sp, modifier = Modifier.padding(top = 10.dp)) }
             item(key = "weather-details") { WeatherDetails(current, snapshot.days.find { it.date == today.toString() }, now, zone) }
             item {
@@ -281,15 +288,26 @@ private fun CurrentCard(hour: HourWeather?, now: Instant, zone: ZoneId) {
 }
 
 @Composable
-private fun ForecastDaysCard(days: List<DayWeather>, today: LocalDate, enabled: Boolean, onFullRefresh: () -> Unit) {
+private fun ForecastDaysCard(
+    days: List<DayWeather>, today: LocalDate, enabled: Boolean, onFullRefresh: () -> Unit,
+    hours: List<HourWeather>, currentHour: Long, zone: ZoneId,
+) {
     var expanded by remember(days) { mutableStateOf(false) }
+    // The tapped day opens below its row and shows that day's cached hours; no network request.
+    var openDay by remember { mutableStateOf<String?>(null) }
     Column(Modifier.fillMaxWidth().background(Color.White.copy(alpha = .07f), RoundedCornerShape(28.dp))
         .border(1.dp, Color.White.copy(alpha = .07f), RoundedCornerShape(28.dp)).padding(16.dp)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text(stringResource(R.string.daily_title), color = Muted, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
             TextButton(onClick = onFullRefresh, enabled = enabled, contentPadding = PaddingValues(horizontal = 4.dp)) { Text(stringResource(R.string.action_update_all), fontSize = 10.sp) }
         }
-        days.take(if (expanded) 7 else 3).forEach { DayRow(it, today) }
+        days.take(if (expanded) 7 else 3).forEach { day ->
+            val open = openDay == day.date
+            DayRow(day, today, open) { openDay = if (open) null else day.date }
+            AnimatedVisibility(open, enter = expandVertically() + fadeIn(), exit = shrinkVertically() + fadeOut()) {
+                DayHours(LocalDate.parse(day.date), hours, currentHour, zone)
+            }
+        }
         if (days.isEmpty()) Text(stringResource(R.string.daily_expired), fontSize = 12.sp, color = Muted)
         if (days.size > 3) FilledTonalButton(onClick = { expanded = !expanded }, modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
             colors = ButtonDefaults.filledTonalButtonColors(containerColor = Color.White.copy(alpha = .15f), contentColor = Color.White)) {
@@ -299,8 +317,11 @@ private fun ForecastDaysCard(days: List<DayWeather>, today: LocalDate, enabled: 
 }
 
 @Composable
-private fun DayRow(day: DayWeather, today: LocalDate) {
-    Row(Modifier.fillMaxWidth().padding(vertical = 7.dp), verticalAlignment = Alignment.CenterVertically) {
+private fun DayRow(day: DayWeather, today: LocalDate, open: Boolean, onToggle: () -> Unit) {
+    val action = stringResource(if (open) R.string.day_hide_hours else R.string.day_show_hours)
+    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp))
+        .background(if (open) Color.White.copy(alpha = .08f) else Color.Transparent)
+        .clickable(onClickLabel = action, onClick = onToggle).padding(vertical = 7.dp), verticalAlignment = Alignment.CenterVertically) {
         val date = LocalDate.parse(day.date)
         WeatherGlyph(day.weatherCode, modifier = Modifier.size(34.dp))
         Spacer(Modifier.width(8.dp))
@@ -312,6 +333,19 @@ private fun DayRow(day: DayWeather, today: LocalDate) {
         Spacer(Modifier.width(6.dp))
         Text(degrees(day.maximum), fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
         Text(" / ${degrees(day.minimum)}", color = Muted, fontSize = 13.sp)
+        Text(if (open) "▴" else "▾", color = Muted, fontSize = 14.sp, modifier = Modifier.padding(start = 8.dp).clearAndSetSemantics {})
+    }
+}
+
+/** The 24 cached hours of one day in the same curve style as the main hourly chart. */
+@Composable
+private fun DayHours(date: LocalDate, hours: List<HourWeather>, currentHour: Long, zone: ZoneId) {
+    val start = date.atStartOfDay(zone).toEpochSecond()
+    val end = date.plusDays(1).atStartOfDay(zone).toEpochSecond()
+    val dayHours = remember(hours, start, end) { hours.filter { it.time in start until end } }
+    Box(Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 10.dp).testTag("day-hours")) {
+        if (dayHours.isEmpty()) Text(stringResource(R.string.day_no_hours), color = Muted, fontSize = 12.sp, modifier = Modifier.padding(8.dp))
+        else HourlyForecastChart(dayHours, currentHour, zone, startAt = start)
     }
 }
 
