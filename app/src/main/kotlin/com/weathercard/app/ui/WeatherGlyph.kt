@@ -29,7 +29,7 @@ fun WeatherGlyph(code: Int?, isDay: Boolean = true, modifier: Modifier = Modifie
     }
 }
 
-private fun DrawScope.drawCondition(condition: WeatherCondition, isDay: Boolean) {
+internal fun DrawScope.drawCondition(condition: WeatherCondition, isDay: Boolean) {
     val clear = condition.sky == Sky.CLEAR
     val showCelestial = condition.sky in listOf(Sky.CLEAR, Sky.MOSTLY_CLEAR, Sky.PARTLY_CLOUDY)
     if (showCelestial) {
