@@ -81,4 +81,9 @@ Version names look like `0.1.0-nightly.YYYYMMDD.N`; the base version lives in `g
 
 ## License
 
-The Inter font is bundled under the SIL Open Font License (`app/src/main/assets/fonts/Inter-OFL.txt`).
+WeatherCard is free software: you can redistribute it and/or modify it under the terms of the
+[GNU General Public License v3.0](LICENSE) as published by the Free Software Foundation.
+If you distribute a modified version, it must also be released under the GPL-3.0 with its source code.
+
+The bundled Inter font is licensed separately under the SIL Open Font License (`app/src/main/assets/fonts/Inter-OFL.txt`).
+Weather data comes from Open-Meteo under CC BY 4.0 (see above).

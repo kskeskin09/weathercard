@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
     inputs:
       candidate_run_id:
-        description: 'Başarılı Android checks koşusunun sayısal ID değeri'
+        description: 'Numeric ID of a successful Android checks run on main'
         type: string
         required: true
 permissions:
@@ -40,16 +40,15 @@ jobs:
         shell: bash
         run: |
           cat > "$RUNNER_TEMP/notes.md" <<EOF
-          Android telefonundan **weathercard-nightly.apk** dosyasını indirip aç.
+          Download **weathercard-nightly.apk** on your Android phone and open it.
 
-          - Sürüm: **$VERSION_NAME** (kod: $VERSION_CODE)
-          - Android 8.0 ve üzeri
-          - Kaynak commit: $SOURCE_SHA
-          - Sabit imza: mevcut nightly üzerine kurulabilir.
-          - Test edilmiş aday APK yeniden derlenmeden yayımlandı.
-          - Private repo: telefonda erişimi olan GitHub hesabınla giriş yapmalısın.
+          - Version: **$VERSION_NAME** (code: $VERSION_CODE)
+          - Android 8.0 or newer
+          - Source commit: $SOURCE_SHA
+          - Signed with the same key as every nightly, so it installs over the previous one.
+          - The tested candidate APK was published without rebuilding.
 
-          Bu bir deneme sürümüdür. Ana/stable release ayrıca karar verdiğinde hazırlanır.
+          This is a test build. Stable releases are published separately.
           EOF
           if gh release view nightly --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
             gh release upload nightly dist/weathercard-nightly.apk dist/weathercard-nightly.apk.sha256 --clobber --repo "$GITHUB_REPOSITORY"
