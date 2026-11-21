@@ -54,6 +54,7 @@ import androidx.compose.ui.res.stringResource
 import com.weathercard.app.ui.labelRes
 import com.weathercard.core.*
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -114,6 +115,22 @@ internal fun WeatherScreen(vm: WeatherViewModel = viewModel(), previewNow: Insta
     // The settled page becomes the selected city; programmatic changes (new city, removal) scroll the pager.
     LaunchedEffect(pager) { snapshotFlow { pager.settledPage }.collect(vm::selectPage) }
     LaunchedEffect(state.page, state.places.size) { if (pager.currentPage != state.page) pager.animateScrollToPage(state.page) }
+    // A swipe that starts on the hourly chart reaches the pager through nested scrolling, and its
+    // release does not always run the pager's own snap. Finish any half-done swipe onto a whole page.
+    LaunchedEffect(pager) {
+        snapshotFlow { pager.isScrollInProgress }.collectLatest { scrolling ->
+            if (scrolling) return@collectLatest
+            delay(120)
+            if (pager.isScrollInProgress || pager.currentPageOffsetFraction == 0f) return@collectLatest
+            val moved = pager.currentPage + pager.currentPageOffsetFraction - pager.settledPage
+            val target = when {
+                moved > .25f -> pager.settledPage + 1
+                moved < -.25f -> pager.settledPage - 1
+                else -> pager.settledPage
+            }.coerceIn(0, (pager.pageCount - 1).coerceAtLeast(0))
+            pager.animateScrollToPage(target)
+        }
+    }
     // Header and backdrop follow the page under the finger so they change as soon as the swipe passes halfway.
     val shownPlace = state.places.getOrNull(pager.currentPage) ?: state.saved.current
     val shown = state.snapshotFor(shownPlace)

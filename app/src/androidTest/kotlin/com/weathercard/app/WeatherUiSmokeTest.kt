@@ -18,6 +18,9 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeLeft
 import androidx.compose.ui.test.swipeRight
@@ -164,9 +167,19 @@ class WeatherUiSmokeTest {
             compose.onAllNodesWithText("7°").onFirst().assertIsDisplayed()
             compose.onNodeWithContentDescription(app.getString(R.string.city_pages, 2, 3)).assertIsDisplayed()
             screenshot(app, "cities-second.png")
-            compose.onNodeWithTag("city-pager").performTouchInput { swipeRight() }
+            // Kerem's report: a swipe that starts on the hourly chart used to stop between two cities.
+            // The chart is already at its first hour, so this rightward drag passes through to the pager.
+            compose.onNodeWithTag("forecast-list").performScrollToNode(hasTestTag("hourly-chart"))
+            compose.onNodeWithTag("hourly-chart").performTouchInput {
+                down(Offset(width * .1f, height / 2f))
+                repeat(12) { moveBy(Offset(width * .05f, 0f), delayMillis = 16) }
+                up()
+            }
             compose.waitUntil(10_000) { compose.onAllNodesWithText("İstanbul").fetchSemanticsNodes().isNotEmpty() }
+            // Only one page is laid out once the pager has settled on a whole page.
+            compose.waitUntil(5_000) { compose.onAllNodesWithTag("forecast-list").fetchSemanticsNodes().size == 1 }
             compose.waitUntil(10_000) { compose.onAllNodesWithText("18°").fetchSemanticsNodes().isNotEmpty() }
+            screenshot(app, "cities-chart-swipe.png")
         }
     }
 
