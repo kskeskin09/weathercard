@@ -22,6 +22,8 @@ import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.semantics.SemanticsNode
+import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeLeft
 import androidx.compose.ui.test.swipeRight
@@ -31,6 +33,8 @@ import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.ComposeTimeoutException
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.semantics.SemanticsNode
+import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.captureToImage
@@ -121,20 +125,20 @@ class WeatherUiSmokeTest {
         }
     }
 
-    /** The node with [tag] on the visible page; a prefetched neighbour page can carry the same tag. */
     /** Like waitUntil, but a timeout reports the screen's semantics tree on one line. */
     private fun waitOrDump(what: String, condition: () -> Boolean) {
         try { compose.waitUntil(10_000, condition) }
         catch (error: ComposeTimeoutException) {
             val tree = compose.onAllNodes(androidx.compose.ui.test.isRoot(), useUnmergedTree = true).fetchSemanticsNodes().joinToString(" || ") { root ->
-                generateSequence(listOf(root)) { level -> level.flatMap { it.children }.takeIf { it.isNotEmpty() } }.flatten()
-                    .mapNotNull { node -> node.config.getOrNull(androidx.compose.ui.semantics.SemanticsProperties.Text)?.joinToString() }
+                generateSequence(listOf(root)) { level: List<SemanticsNode> -> level.flatMap { it.children }.takeIf { it.isNotEmpty() } }.flatten()
+                    .mapNotNull { node: SemanticsNode -> node.config.getOrNull(androidx.compose.ui.semantics.SemanticsProperties.Text)?.joinToString() }
                     .joinToString(" | ")
             }
             throw AssertionError("Timed out waiting for $what. Texts: $tree", error)
         }
     }
 
+    /** The node with [tag] on the visible page; a prefetched neighbour page can carry the same tag. */
     private fun placed(tag: String): androidx.compose.ui.test.SemanticsNodeInteraction {
         val nodes = compose.onAllNodesWithTag(tag).fetchSemanticsNodes()
         val index = nodes.indexOfFirst { it.layoutInfo.isPlaced && kotlin.math.abs(it.boundsInRoot.left) < it.boundsInRoot.width }
