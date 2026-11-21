@@ -16,6 +16,11 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
@@ -84,6 +89,7 @@ internal fun WeatherScreen(vm: WeatherViewModel = viewModel(), previewNow: Insta
     var confirmFull by remember { mutableStateOf(false) }
     var showUsage by remember { mutableStateOf(false) }
     var showMenu by remember { mutableStateOf(false) }
+    var confirmRemove by remember { mutableStateOf(false) }
     if (showUsage) {
         LaunchedEffect(Unit) { vm.loadUsage() }
         UsageScreen(state.usage, state.usageError, onBack = { showUsage = false }, onReload = vm::loadUsage)
@@ -95,9 +101,16 @@ internal fun WeatherScreen(vm: WeatherViewModel = viewModel(), previewNow: Insta
     // Advancing the display clock never makes a network request.
     var now by remember(previewNow) { mutableStateOf(previewNow ?: Instant.now()) }
     LaunchedEffect(previewNow) { if (previewNow == null) while (true) { now = Instant.now(); delay(30_000) } }
-    val activeZone = state.snapshot?.timezone?.let(ZoneId::of) ?: ZoneId.systemDefault()
+    val pager = rememberPagerState(initialPage = state.page) { state.places.size }
+    // The settled page becomes the selected city; programmatic changes (new city, removal) scroll the pager.
+    LaunchedEffect(pager) { snapshotFlow { pager.settledPage }.collect(vm::selectPage) }
+    LaunchedEffect(state.page, state.places.size) { if (pager.currentPage != state.page) pager.animateScrollToPage(state.page) }
+    // Header and backdrop follow the page under the finger so they change as soon as the swipe passes halfway.
+    val shownPlace = state.places.getOrNull(pager.currentPage) ?: state.saved.current
+    val shown = state.snapshotFor(shownPlace)
+    val activeZone = shown?.timezone?.let(ZoneId::of) ?: ZoneId.systemDefault()
     val activeHour = now.atZone(activeZone).truncatedTo(ChronoUnit.HOURS).toEpochSecond()
-    val activeWeather = state.snapshot?.hours?.find { it.time == activeHour }
+    val activeWeather = shown?.hours?.find { it.time == activeHour }
     val daylight = activeWeather?.isDay ?: (now.atZone(activeZone).hour in 7..18)
     Surface(Modifier.fillMaxSize(), color = Ink) {
       Box(Modifier.fillMaxSize()) {
@@ -107,10 +120,13 @@ internal fun WeatherScreen(vm: WeatherViewModel = viewModel(), previewNow: Insta
                 IconButton(onClick = { showSearch = true }, enabled = !state.busy, modifier = Modifier.semantics { contentDescription = "Şehir ekle" }) {
                     Text("+", fontSize = 38.sp, lineHeight = 40.sp, fontWeight = FontWeight.Normal)
                 }
-                Row(Modifier.weight(1f), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
-                    if (state.snapshot?.place?.isCurrentLocation == true) { LocationMark(Modifier.size(14.dp)); Spacer(Modifier.width(7.dp)) }
-                    Text(state.snapshot?.place?.name?.substringBefore(",") ?: "Hava durumu", fontSize = 21.sp, lineHeight = 26.sp,
-                        fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        if (shownPlace.isCurrentLocation) { LocationMark(Modifier.size(14.dp)); Spacer(Modifier.width(7.dp)) }
+                        Text(shownPlace.name.substringBefore(","), fontSize = 21.sp, lineHeight = 26.sp,
+                            fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
+                    if (state.places.size > 1) PageDots(state.places, pager.currentPage, Modifier.padding(top = 5.dp))
                 }
                 Box {
                     IconButton(onClick = { showMenu = true }, modifier = Modifier.semantics { contentDescription = "Diğer seçenekler" }) { Text("⋮", fontSize = 28.sp) }
@@ -118,78 +134,18 @@ internal fun WeatherScreen(vm: WeatherViewModel = viewModel(), previewNow: Insta
                         DropdownMenuItem(text = { Text("Konumumu kullan") }, enabled = !state.busy, onClick = {
                             showMenu = false; location.launch(arrayOf(Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.ACCESS_FINE_LOCATION))
                         })
-                        DropdownMenuItem(text = { Text("Şehir seç") }, onClick = { showMenu = false; showSearch = true })
+                        DropdownMenuItem(text = { Text("Şehir ekle") }, enabled = state.saved.canAdd, onClick = { showMenu = false; showSearch = true })
+                        if (state.places.size > 1) DropdownMenuItem(text = { Text("Bu şehri kaldır") }, enabled = !state.busy,
+                            onClick = { showMenu = false; confirmRemove = true })
                         DropdownMenuItem(text = { Text("Kota") }, onClick = { showMenu = false; showUsage = true })
                         DropdownMenuItem(text = { Text("7 günü yeniden yükle") }, enabled = !state.busy, onClick = { showMenu = false; confirmFull = true })
                     }
                 }
             }
             PullToRefreshBox(isRefreshing = state.busy, onRefresh = vm::refresh, modifier = Modifier.weight(1f)) {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize().testTag("forecast-list"),
-                    contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 28.dp),
-                    verticalArrangement = Arrangement.spacedBy(14.dp),
-                ) {
-                    state.status?.let { status -> item { Text(status, color = Accent, fontSize = 13.sp) } }
-                    state.message?.let { message ->
-                        item {
-                            val context = LocalContext.current
-                            Card(colors = CardDefaults.cardColors(containerColor = Color(0xFF3A2933))) {
-                                Text(message, Modifier.padding(16.dp), fontSize = 13.sp)
-                                if (message.contains("konum", ignoreCase = true)) Row(Modifier.padding(horizontal = 8.dp)) {
-                                    TextButton(onClick = { context.startActivity(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)) }) { Text("Konum ayarları", fontSize = 12.sp) }
-                                    TextButton(onClick = { context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${context.packageName}"))) }) { Text("Uygulama izni", fontSize = 12.sp) }
-                                }
-                            }
-                        }
-                    }
-                    val snapshot = state.snapshot
-                    if (snapshot == null) {
-                        item {
-                            Column(Modifier.fillMaxWidth().padding(vertical = 64.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                                WeatherGlyph(2, modifier = Modifier.size(110.dp))
-                                Text(if (state.busy) "Gökyüzüne bakıyoruz…" else "Tahminler henüz yüklenemedi", color = Muted)
-                                if (!state.busy) Button(onClick = vm::refresh) { Text("Tekrar dene") }
-                            }
-                        }
-                    } else {
-                        val zone = ZoneId.of(snapshot.timezone)
-                        val hour = now.atZone(zone).truncatedTo(ChronoUnit.HOURS).toEpochSecond()
-                        val current = snapshot.hours.find { it.time == hour }
-                        item { CurrentCard(current, now, zone) }
-                        item {
-                            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                                Text("Saatlik tahmin", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
-                                Text("${snapshot.hours.size} SAAT", color = Muted, fontSize = 10.sp, letterSpacing = 2.sp)
-                                TextButton(onClick = vm::refresh, enabled = !state.busy) { Text("Yenile ↻", fontSize = 12.sp) }
-                            }
-                        }
-                        item {
-                            key(snapshot.place.cacheKey) { HourlyForecastChart(snapshot.hours, hour, zone) }
-                        }
-                        val today = now.atZone(zone).toLocalDate()
-                        val days = snapshot.days.filter { !LocalDate.parse(it.date).isBefore(today) }
-                        item { ForecastDaysCard(days, today, !state.busy) { confirmFull = true } }
-                        item { Text("DETAYLAR", color = Muted, fontSize = 10.sp, letterSpacing = 1.5.sp, modifier = Modifier.padding(top = 10.dp)) }
-                        item(key = "weather-details") { WeatherDetails(current, snapshot.days.find { it.date == today.toString() }, now, zone) }
-                        item {
-                            Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                                val fullTime = Instant.ofEpochSecond(snapshot.fullFetchedAt)
-                                if (days.size < 7 || fullTime.plus(24, ChronoUnit.HOURS).isBefore(now)) {
-                                    Text("Günlük tahmin eski. Yeni 7 gün için “Tümünü güncelle”yi kullan.", color = Color(0xFFFFD68B), fontSize = 12.sp)
-                                }
-                                Text("7 günlük kayıt: ${formatTime(snapshot.fullFetchedAt, zone)}", color = Muted, fontSize = 11.sp)
-                                snapshot.sixHoursFetchedAt?.let { Text("Son 6 saat yenilemesi: ${formatTime(it, zone)}", color = Muted, fontSize = 11.sp) }
-                                Text("Yenileme yalnızca bu saat dahil 6 saatlik tahmini değiştirir. Günlük tahminler korunur.", color = Muted, fontSize = 11.sp)
-                            }
-                        }
-                    }
-                    item {
-                        val uri = LocalUriHandler.current
-                        Column {
-                            TextButton(onClick = { uri.openUri("https://open-meteo.com/") }) { Text("Hava durumu: Open-Meteo · CC BY 4.0", color = Muted, fontSize = 11.sp) }
-                            Text("WeatherCard ${BuildConfig.VERSION_NAME}", color = Muted, fontSize = 10.sp, modifier = Modifier.padding(start = 12.dp))
-                        }
+                HorizontalPager(pager, Modifier.fillMaxSize().testTag("city-pager"), key = { state.places.getOrNull(it)?.cacheKey ?: it }) { page ->
+                    state.places.getOrNull(page)?.let { place ->
+                        ForecastPage(state, place, page == state.page, now, vm, onFullRefresh = { confirmFull = true })
                     }
                 }
             }
@@ -197,6 +153,13 @@ internal fun WeatherScreen(vm: WeatherViewModel = viewModel(), previewNow: Insta
       }
     }
     if (showSearch) CityDialog(state, vm::search, onSelect = { vm.load(it); showSearch = false }, onDismiss = { showSearch = false })
+    if (confirmRemove) AlertDialog(
+        onDismissRequest = { confirmRemove = false },
+        title = { Text("Şehri kaldır") },
+        text = { Text("${state.saved.current.name.substringBefore(",")} kayıtlı şehirlerinden kaldırılsın mı?") },
+        confirmButton = { TextButton(onClick = { confirmRemove = false; vm.removeCurrent() }) { Text("Kaldır") } },
+        dismissButton = { TextButton(onClick = { confirmRemove = false }) { Text("Vazgeç") } },
+    )
     if (confirmFull) AlertDialog(
         onDismissRequest = { confirmFull = false },
         title = { Text("7 günü yeniden yükle") },
@@ -204,6 +167,93 @@ internal fun WeatherScreen(vm: WeatherViewModel = viewModel(), previewNow: Insta
         confirmButton = { TextButton(onClick = { confirmFull = false; vm.reloadAll() }) { Text("Tümünü güncelle") } },
         dismissButton = { TextButton(onClick = { confirmFull = false }) { Text("Vazgeç") } },
     )
+}
+
+@Composable
+private fun ForecastPage(
+    state: WeatherUiState, place: Place, selected: Boolean, now: Instant, vm: WeatherViewModel, onFullRefresh: () -> Unit,
+) {
+    val snapshot = state.snapshotFor(place)
+    LazyColumn(
+        modifier = Modifier.fillMaxSize().testTag("forecast-list"),
+        contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 28.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
+        state.status?.takeIf { selected }?.let { status -> item { Text(status, color = Accent, fontSize = 13.sp) } }
+        state.message?.takeIf { selected }?.let { message ->
+            item {
+                val context = LocalContext.current
+                Card(colors = CardDefaults.cardColors(containerColor = Color(0xFF3A2933))) {
+                    Text(message, Modifier.padding(16.dp), fontSize = 13.sp)
+                    if (message.contains("konum", ignoreCase = true)) Row(Modifier.padding(horizontal = 8.dp)) {
+                        TextButton(onClick = { context.startActivity(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)) }) { Text("Konum ayarları", fontSize = 12.sp) }
+                        TextButton(onClick = { context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${context.packageName}"))) }) { Text("Uygulama izni", fontSize = 12.sp) }
+                    }
+                }
+            }
+        }
+        if (snapshot == null) {
+            val loading = (selected && state.busy) || place.cacheKey in state.opening
+            item {
+                Column(Modifier.fillMaxWidth().padding(vertical = 64.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                    WeatherGlyph(2, modifier = Modifier.size(110.dp))
+                    Text(if (loading) "Gökyüzüne bakıyoruz…" else "Tahminler henüz yüklenemedi", color = Muted)
+                    if (!loading && selected) Button(onClick = vm::refresh) { Text("Tekrar dene") }
+                }
+            }
+        } else {
+            val zone = ZoneId.of(snapshot.timezone)
+            val hour = now.atZone(zone).truncatedTo(ChronoUnit.HOURS).toEpochSecond()
+            val current = snapshot.hours.find { it.time == hour }
+            item { CurrentCard(current, now, zone) }
+            item {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Text("Saatlik tahmin", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                    Text("${snapshot.hours.size} SAAT", color = Muted, fontSize = 10.sp, letterSpacing = 2.sp)
+                    TextButton(onClick = vm::refresh, enabled = !state.busy) { Text("Yenile ↻", fontSize = 12.sp) }
+                }
+            }
+            item {
+                key(snapshot.place.cacheKey) { HourlyForecastChart(snapshot.hours, hour, zone) }
+            }
+            val today = now.atZone(zone).toLocalDate()
+            val days = snapshot.days.filter { !LocalDate.parse(it.date).isBefore(today) }
+            item { ForecastDaysCard(days, today, !state.busy) onFullRefresh }
+            item { Text("DETAYLAR", color = Muted, fontSize = 10.sp, letterSpacing = 1.5.sp, modifier = Modifier.padding(top = 10.dp)) }
+            item(key = "weather-details") { WeatherDetails(current, snapshot.days.find { it.date == today.toString() }, now, zone) }
+            item {
+                Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                    val fullTime = Instant.ofEpochSecond(snapshot.fullFetchedAt)
+                    if (days.size < 7 || fullTime.plus(24, ChronoUnit.HOURS).isBefore(now)) {
+                        Text("Günlük tahmin eski. Yeni 7 gün için “Tümünü güncelle”yi kullan.", color = Color(0xFFFFD68B), fontSize = 12.sp)
+                    }
+                    Text("7 günlük kayıt: ${formatTime(snapshot.fullFetchedAt, zone)}", color = Muted, fontSize = 11.sp)
+                    snapshot.sixHoursFetchedAt?.let { Text("Son 6 saat yenilemesi: ${formatTime(it, zone)}", color = Muted, fontSize = 11.sp) }
+                    Text("Yenileme yalnızca bu saat dahil 6 saatlik tahmini değiştirir. Günlük tahminler korunur.", color = Muted, fontSize = 11.sp)
+                }
+            }
+        }
+        item {
+            val uri = LocalUriHandler.current
+            Column {
+                TextButton(onClick = { uri.openUri("https://open-meteo.com/") }) { Text("Hava durumu: Open-Meteo · CC BY 4.0", color = Muted, fontSize = 11.sp) }
+                Text("WeatherCard ${BuildConfig.VERSION_NAME}", color = Muted, fontSize = 10.sp, modifier = Modifier.padding(start = 12.dp))
+            }
+        }
+    }
+}
+
+/** One dot per saved city; the current-location page shows the location arrow instead of a dot. */
+@Composable
+private fun PageDots(places: List<Place>, current: Int, modifier: Modifier = Modifier) {
+    Row(modifier.semantics(mergeDescendants = true) { contentDescription = "Şehir ${current + 1} / ${places.size}" },
+        horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+        places.forEachIndexed { index, place ->
+            val alpha = if (index == current) 1f else .4f
+            if (place.isCurrentLocation) Box(Modifier.size(9.dp).alpha(alpha).clearAndSetSemantics {}) { LocationMark(Modifier.fillMaxSize()) }
+            else Box(Modifier.size(7.dp).background(Color.White.copy(alpha = alpha), CircleShape))
+        }
+    }
 }
 
 @Composable
