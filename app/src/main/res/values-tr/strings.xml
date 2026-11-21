@@ -37,7 +37,6 @@
     <string name="search_title">Şehir bul</string>
     <string name="search_label">Şehir veya ilçe</string>
     <string name="searching">Aranıyor…</string>
-    <string name="action_search">Ara</string>
     <string name="action_close">Kapat</string>
     <string name="search_none">Şehir bulunamadı.</string>
     <string name="search_failed">Şehir araması başarısız. Tekrar dene.</string>
@@ -145,4 +144,8 @@
         <item>Batı</item>
         <item>Kuzeybatı</item>
     </string-array>
+    <string name="menu_settings">Ayarlar</string>
+    <string name="settings_title">Ayarlar</string>
+    <string name="settings_location_page">Konum sayfası</string>
+    <string name="settings_location_page_note">Bulunduğun yere göre değişen ilk sayfa. Uygulama yeniden açıldığında bu sayfadan başlar.</string>
 </resources>
