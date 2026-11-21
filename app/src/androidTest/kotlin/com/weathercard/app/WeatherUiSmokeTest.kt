@@ -334,14 +334,14 @@ class WeatherUiSmokeTest {
         runBlocking {
             com.weathercard.app.data.DiskForecastStore(File(app.filesDir, "forecasts")).write(WeatherSnapshot(place, "Europe/Istanbul", hours, days, now.epochSecond))
         }
-        app.getSharedPreferences("settings", 0).edit().clear().commit()
+        app.getSharedPreferences("settings", 0).edit().clear().putBoolean("location_page_enabled", false).commit()
         ActivityScenario.launch(MainActivity::class.java).use {
-            compose.waitUntil(15_000) { compose.onAllNodesWithTag("forecast-list").fetchSemanticsNodes().isNotEmpty() }
+            compose.waitUntil(15_000) { compose.onAllNodesWithText(app.getString(R.string.daily_title)).fetchSemanticsNodes().isNotEmpty() }
             val tomorrow = app.getString(R.string.tomorrow)
-            compose.onNodeWithTag("forecast-list").performScrollToNode(hasText(tomorrow))
+            placed("forecast-list").performScrollToNode(hasText(tomorrow))
             compose.onNodeWithText(tomorrow).performClick()
             compose.waitUntil(5_000) { compose.onAllNodesWithTag("day-hours").fetchSemanticsNodes().isNotEmpty() }
-            compose.onNodeWithTag("forecast-list").performScrollToNode(hasTestTag("day-hours"))
+            placed("forecast-list").performScrollToNode(hasTestTag("day-hours"))
             compose.onNodeWithTag("day-hours").assertIsDisplayed()
             screenshot(app, "day-expanded.png")
             compose.onNodeWithText(tomorrow).performClick()
