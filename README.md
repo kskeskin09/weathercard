@@ -10,12 +10,12 @@ The app is available in **English** and **Turkish** and follows your phone's sys
 
 - **Big, readable current conditions**: temperature, condition and local time at a glance, on a full-screen sky backdrop that changes with day, night, rain and snow.
 - **Hourly curve**: a horizontally scrollable temperature line that starts at the current hour, with an icon, wind speed and time for every hour.
-- **7-day forecast** with daily highs, lows and conditions.
+- **7-day forecast** with daily highs, lows and conditions. Tap a day to see its 24 hours.
 - **Details**: wind direction and speed on a compass, sunrise and sunset with the sun's position, humidity, feels-like temperature, UV index, pressure and chance of rain.
-- **Several cities**: search for a city or district, save up to 10, and swipe between them. Your current location (approximate, or a one-time precise GPS fix if you allow it) can be the first page.
+- **Several cities**: search for a city or district, save up to 10, and swipe between them. Your current location (approximate, or a one-time precise GPS fix if you allow it) can be the first page; you can turn that page off in Settings.
 - **Home-screen widget** that shows the selected place from the saved forecast.
 - **Works offline**: forecasts are stored on the device per location and shown even without a connection. A failed refresh never deletes saved data.
-- **Light on the free API**: a normal refresh asks only for the next 6 hours; the full 7 days are downloaded once for a new place or when you choose “Update all”. While the app is on screen it refreshes those 6 hours once per hour, and it never runs in the background.
+- **Light on the free API**: pull to refresh asks only for the next 6 hours. While the app is on screen it downloads the full 7 days for the visible city at most once an hour, and it never runs in the background.
 - **Quota page** (three-dot menu) that estimates how much of the free Open-Meteo quota this device has used.
 - Original vector icons for all 28 WMO weather codes, with accessible descriptions, and the embedded [Inter](https://rsms.me/inter/) typeface.
 
@@ -48,12 +48,12 @@ The free limits are shared per IP address and are not guaranteed per device, so 
 ### How the app uses the quota
 
 1. A place without a saved forecast downloads 7 days of hourly and daily data **once** (about 2.3 quota units).
-2. Opening the app again reads the saved forecast from disk. It never starts a full download on its own.
-3. Pull to refresh, **Refresh**, and the hourly automatic refresh ask only for the current hour plus the next 5 (about 1.4 units). For example, at 14:35 it fetches 14:00 to 19:00 and replaces only those hours.
-4. A new 7-day forecast is downloaded only when you pick **Update all**. When the daily data gets old, the app tells you.
+2. Opening the app again shows the saved forecast from disk right away.
+3. Pull to refresh asks only for the current hour plus the next 5 (about 1.4 units). For example, at 14:35 it fetches 14:00 to 19:00 and replaces only those hours.
+4. While the app is on screen (when it opens, when you come back to it, or when you swipe to another city), it downloads the full 7 days for the visible city if its last full download is at least an hour old. **Refresh all** in the ⋮ menu downloads the full 7 days for every saved city right away. When the daily data gets old, the app tells you.
 5. City searches use a separate geocoding endpoint. Showing cached data costs nothing.
 
-There is no automatic polling or retry; after an error the app keeps the saved forecast and waits for the next hour.
+There is no background polling and no retry; after an error the app keeps the saved forecast and waits for the next hour.
 
 ## Building
 
