@@ -116,6 +116,14 @@ class WeatherUiSmokeTest {
         }
     }
 
+    /** The node with [tag] on the visible page; a prefetched neighbour page can carry the same tag. */
+    private fun placed(tag: String): androidx.compose.ui.test.SemanticsNodeInteraction {
+        val nodes = compose.onAllNodesWithTag(tag).fetchSemanticsNodes()
+        val index = nodes.indexOfFirst { it.layoutInfo.isPlaced && kotlin.math.abs(it.boundsInRoot.left) < it.boundsInRoot.width }
+        check(index >= 0) { "No placed node tagged $tag" }
+        return compose.onAllNodesWithTag(tag)[index]
+    }
+
     /** Prefetched neighbour pages may exist without being placed; only placed pages count. */
     private fun pagerSettled(): Boolean {
         val placed = compose.onAllNodesWithTag("forecast-list").fetchSemanticsNodes().filter { it.layoutInfo.isPlaced }
@@ -176,8 +184,8 @@ class WeatherUiSmokeTest {
             screenshot(app, "cities-second.png")
             // Kerem's report: a swipe that starts on the hourly chart used to stop between two cities.
             // The chart is already at its first hour, so this rightward drag passes through to the pager.
-            compose.onNodeWithTag("forecast-list").performScrollToNode(hasTestTag("hourly-chart"))
-            compose.onNodeWithTag("hourly-chart").performTouchInput {
+            placed("forecast-list").performScrollToNode(hasTestTag("hourly-chart"))
+            placed("hourly-chart").performTouchInput {
                 down(Offset(width * .1f, height / 2f))
                 repeat(12) { moveBy(Offset(width * .05f, 0f), delayMillis = 16) }
                 up()
