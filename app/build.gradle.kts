@@ -34,6 +34,9 @@ android {
         }
     }
     buildFeatures { compose = true; buildConfig = true }
+    // English is the default (values/); Turkish lives in values-tr/. The generated locale list lets
+    // Android 13+ offer a per-app language choice; otherwise the system language decides.
+    androidResources { generateLocaleConfig = true }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17

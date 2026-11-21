@@ -1,5 +1,6 @@
 package com.weathercard.app.widget
 
+import com.weathercard.app.R
 import com.weathercard.core.DayWeather
 import com.weathercard.core.HourWeather
 import com.weathercard.core.Place
@@ -30,7 +31,7 @@ class WidgetForecastTest {
         val forecast = WidgetForecast.from(snapshot, start.plusSeconds(3600 + 25 * 60))!!
         assertEquals(15.6, forecast.temperature)
         assertEquals(61, forecast.weatherCode)
-        assertEquals("Hafif yağmur", forecast.description)
+        assertEquals(R.string.condition_light_rain, forecast.descriptionRes)
         assertEquals(16.7, forecast.maximum)
         assertEquals(8.2, forecast.minimum)
         assertTrue(forecast.isCurrentLocation)
@@ -39,7 +40,7 @@ class WidgetForecastTest {
     @Test fun fallsBackToLocalHourWhenIsDayMissing() {
         val forecast = WidgetForecast.from(snapshot, start.plusSeconds(7200 * 6 + 60))!!
         assertFalse(forecast.isDay)
-        assertEquals("Açık gece", forecast.description)
+        assertEquals(R.string.condition_clear_night, forecast.descriptionRes)
     }
 
     @Test fun returnsNullWhenCacheDoesNotCoverThisHour() {

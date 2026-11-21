@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name" translatable="false">WeatherCard</string>
+    <string name="widget_description">Current temperature and weather for the selected place</string>
+    <string name="widget_empty">Open the app to see the forecast</string>
+    <string name="current_location">Current location</string>
+    <string name="action_add_city">Add city</string>
+    <string name="action_more">More options</string>
+    <string name="menu_use_location">Use my location</string>
+    <string name="menu_remove_city">Remove this city</string>
+    <string name="menu_quota">Quota</string>
+    <string name="menu_reload_week">Reload 7 days</string>
+    <string name="remove_title">Remove city</string>
+    <string name="remove_text">Remove %1$s from your saved cities?</string>
+    <string name="action_remove">Remove</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="reload_week_text">This downloads the whole hourly and daily forecast again. A normal refresh only updates 6 hours.</string>
+    <string name="action_update_all">Update all</string>
+    <string name="location_settings">Location settings</string>
+    <string name="app_permission">App permission</string>
+    <string name="loading_forecast">Looking at the sky…</string>
+    <string name="forecast_unavailable">The forecast could not be loaded yet</string>
+    <string name="action_retry">Try again</string>
+    <string name="hourly_title">Hourly forecast</string>
+    <string name="action_refresh">Refresh ↻</string>
+    <string name="details_header">DETAILS</string>
+    <string name="daily_stale">The daily forecast is out of date. Use “Update all” for a fresh 7 days.</string>
+    <string name="full_fetched">7-day data: %1$s</string>
+    <string name="six_fetched">Last 6-hour refresh: %1$s</string>
+    <string name="refresh_note">Refresh only changes the 6 hours starting with the current one. Daily forecasts are kept.</string>
+    <string name="attribution">Weather data: Open-Meteo · CC BY 4.0</string>
+    <string name="city_pages">City %1$d of %2$d</string>
+    <string name="daily_title">7-day forecast</string>
+    <string name="daily_expired">The saved daily forecast has expired.</string>
+    <string name="action_collapse">Show less</string>
+    <string name="today">Today</string>
+    <string name="tomorrow">Tomorrow</string>
+    <string name="search_title">Find a city</string>
+    <string name="search_label">City or district</string>
+    <string name="searching">Searching…</string>
+    <string name="action_search">Search</string>
+    <string name="action_close">Close</string>
+    <string name="search_none">No city found.</string>
+    <string name="search_failed">City search failed. Try again.</string>
+    <string name="pattern_current_date">HH:mm · EEEE, d MMMM</string>
+    <string name="percent">%1$s%%</string>
+    <string name="wind_unit">km/h</string>
+    <string name="now">Now</string>
+    <string name="hour_description">%1$s, %2$s, %3$s, %4$s, wind %5$s kilometres per hour</string>
+    <string name="detail_humidity">Humidity</string>
+    <string name="detail_feels_like">Feels like</string>
+    <string name="detail_uv">UV</string>
+    <string name="detail_pressure">Pressure</string>
+    <string name="detail_precipitation">Chance of rain</string>
+    <string name="wind_title">WIND</string>
+    <string name="wind_unknown">Direction unknown</string>
+    <string name="wind_gusts">Gusts %1$s km/h</string>
+    <string name="compass_north">N</string>
+    <string name="compass_south">S</string>
+    <string name="compass_west">W</string>
+    <string name="compass_east">E</string>
+    <string name="sun_title">SUN PATH</string>
+    <string name="sunrise">Sunrise</string>
+    <string name="sunset">Sunset</string>
+    <string name="sun_no_data">No sun data</string>
+    <string name="sun_day">Daytime</string>
+    <string name="sun_night">Night</string>
+    <string name="error_connection">Could not connect. Your saved forecast is kept.</string>
+    <string name="error_bad_response">The weather service sent an incomplete answer. Your saved forecast is kept.</string>
+    <string name="error_rate_limited">Request quota reached. Try again later; your saved forecasts are kept.</string>
+    <string name="error_http">Could not reach the weather service (HTTP %1$d).</string>
+    <string name="error_city_limit">You can save up to %1$d cities. Remove one first.</string>
+    <string name="locating">Finding your location…</string>
+    <string name="location_denied">Location permission was not granted. You can continue by choosing a city.</string>
+    <string name="location_permission_missing">Location permission was not granted. You can allow location access in the app permissions.</string>
+    <string name="location_off">Your phone\'s location is off. Turn it on in location settings and try again.</string>
+    <string name="location_failed_precise">Could not get your location. Try again in an open area or check location settings. You can also continue by choosing a city.</string>
+    <string name="location_failed_approximate">Could not get your approximate location. Allow precise location in the app permission to try GPS, or choose a city.</string>
+    <string name="usage_read_failed">Could not read the usage log.</string>
+    <string name="action_back">‹ Back</string>
+    <string name="usage_reload">Refresh counter</string>
+    <string name="usage_title">API usage</string>
+    <string name="usage_subtitle">Estimated Open-Meteo usage from this device</string>
+    <string name="usage_disclaimer">This counter is not the provider\'s real remaining quota. It cannot see other devices or shared IP traffic. It is calculated from the requests this device tried to send, failed ones included.</string>
+    <string name="usage_hour">This hour</string>
+    <string name="usage_day">Today</string>
+    <string name="usage_month">This month</string>
+    <string name="usage_periods_note">Periods follow the UTC calendar. Percentages are a rough comparison with the free plan\'s published limits; they do not guarantee quota is available right now.</string>
+    <string name="usage_month_details">This month in detail</string>
+    <string name="usage_full">Full forecast requests</string>
+    <string name="usage_partial">6-hour refreshes</string>
+    <string name="usage_searches">City searches</string>
+    <string name="usage_lifetime">All time · weather</string>
+    <string name="usage_units">%1$s units</string>
+    <string name="usage_units_of">%1$s / %2$s units</string>
+    <string name="usage_search_note">City search is a separate endpoint; it is not added to the weather quota estimate above.</string>
+    <string name="usage_how">How is this calculated?</string>
+    <string name="usage_costs">Full 7-day forecast: %1$s units\n6-hour refresh: %2$s units\nShown from cache: 0 units</string>
+    <string name="usage_started">Log started: %1$s\nThe log is stored on this device. Clearing the app\'s data or uninstalling it also deletes this counter.</string>
+    <string name="usage_pricing_link">Open-Meteo quota explained ↗</string>
+    <string name="condition_clear_day">Clear and sunny</string>
+    <string name="condition_clear_night">Clear night</string>
+    <string name="condition_mostly_clear">Mostly clear</string>
+    <string name="condition_partly_cloudy">Partly cloudy</string>
+    <string name="condition_overcast">Overcast</string>
+    <string name="condition_fog">Fog</string>
+    <string name="condition_rime_fog">Rime fog</string>
+    <string name="condition_light_drizzle">Light drizzle</string>
+    <string name="condition_moderate_drizzle">Moderate drizzle</string>
+    <string name="condition_dense_drizzle">Dense drizzle</string>
+    <string name="condition_light_freezing_drizzle">Light freezing drizzle</string>
+    <string name="condition_dense_freezing_drizzle">Dense freezing drizzle</string>
+    <string name="condition_light_rain">Light rain</string>
+    <string name="condition_moderate_rain">Moderate rain</string>
+    <string name="condition_heavy_rain">Heavy rain</string>
+    <string name="condition_light_freezing_rain">Light freezing rain</string>
+    <string name="condition_heavy_freezing_rain">Heavy freezing rain</string>
+    <string name="condition_light_snow">Light snow</string>
+    <string name="condition_moderate_snow">Moderate snow</string>
+    <string name="condition_heavy_snow">Heavy snow</string>
+    <string name="condition_snow_grains">Snow grains</string>
+    <string name="condition_light_showers">Light showers</string>
+    <string name="condition_moderate_showers">Moderate showers</string>
+    <string name="condition_violent_showers">Violent showers</string>
+    <string name="condition_light_snow_showers">Light snow showers</string>
+    <string name="condition_heavy_snow_showers">Heavy snow showers</string>
+    <string name="condition_thunderstorm">Thunderstorm</string>
+    <string name="condition_thunderstorm_light_hail">Thunderstorm with light hail</string>
+    <string name="condition_thunderstorm_heavy_hail">Thunderstorm with heavy hail</string>
+    <string name="condition_unknown">Weather unknown</string>
+    <plurals name="hourly_count">
+        <item quantity="one">%d HOUR</item>
+        <item quantity="other">%d HOURS</item>
+    </plurals>
+    <plurals name="usage_requests">
+        <item quantity="one">%d weather request · estimated usage</item>
+        <item quantity="other">%d weather requests · estimated usage</item>
+    </plurals>
+    <string-array name="wind_directions">
+        <item>North</item>
+        <item>Northeast</item>
+        <item>East</item>
+        <item>Southeast</item>
+        <item>South</item>
+        <item>Southwest</item>
+        <item>West</item>
+        <item>Northwest</item>
+    </string-array>
+</resources>

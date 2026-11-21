@@ -1,5 +1,8 @@
 package com.weathercard.app.data
 
+import com.weathercard.app.R
+import com.weathercard.app.UiText
+import com.weathercard.app.UserFacingException
 import com.weathercard.core.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -8,11 +11,11 @@ import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONObject
-import java.io.IOException
 import java.time.Clock
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.util.Locale
 import java.util.concurrent.TimeUnit
 
 class OpenMeteoApi(private val usage: UsageTracker, private val clock: Clock = Clock.systemUTC()) : WeatherApi {
@@ -39,7 +42,7 @@ class OpenMeteoApi(private val usage: UsageTracker, private val clock: Clock = C
         val url = "https://geocoding-api.open-meteo.com/v1/search".toHttpUrl().newBuilder()
             .addQueryParameter("name", query.trim())
             .addQueryParameter("count", "8")
-            .addQueryParameter("language", "tr")
+            .addQueryParameter("language", Locale.getDefault().language.ifBlank { "en" })
             .addQueryParameter("format", "json").build()
         val results = request(url, RequestKind.GEOCODING).optJSONArray("results") ?: return emptyList()
         return (0 until results.length()).map { index ->
@@ -53,9 +56,9 @@ class OpenMeteoApi(private val usage: UsageTracker, private val clock: Clock = C
     private suspend fun request(url: HttpUrl, kind: RequestKind): JSONObject = withContext(Dispatchers.IO) {
         usage.record(kind)
         client.newCall(Request.Builder().url(url).header("User-Agent", "WeatherCard/0.1 (Android)").build()).execute().use { response ->
-            if (response.code == 429) throw IOException("İstek kotası doldu. Bir süre sonra tekrar dene; kayıtlı tahminlerin korunuyor.")
-            if (!response.isSuccessful) throw IOException("Hava durumu servisine ulaşılamadı (HTTP ${response.code}).")
-            JSONObject(response.body?.string() ?: throw IOException("Servis boş yanıt döndürdü."))
+            if (response.code == 429) throw UserFacingException(UiText(R.string.error_rate_limited))
+            if (!response.isSuccessful) throw UserFacingException(UiText(R.string.error_http, listOf(response.code)))
+            JSONObject(response.body?.string() ?: throw UserFacingException(UiText(R.string.error_bad_response)))
         }
     }
 
@@ -126,8 +129,8 @@ class OpenMeteoApi(private val usage: UsageTracker, private val clock: Clock = C
             }
         }
         private fun JSONObject.numberAt(key: String, index: Int): Double? {
-            val array = optJSONArray(key) ?: throw IOException("Servis yanıtında $key eksik.")
-            if (index >= array.length()) throw IOException("Servis yanıtındaki $key dizisi eksik.")
+            val array = optJSONArray(key) ?: throw IllegalStateException("Response is missing $key.")
+            if (index >= array.length()) throw IllegalStateException("Response array $key is too short.")
             return if (array.isNull(index)) null else array.getDouble(index).takeIf { it.isFinite() }
         }
     }

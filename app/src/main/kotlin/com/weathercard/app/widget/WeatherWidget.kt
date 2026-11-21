@@ -45,6 +45,7 @@ import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
 import com.weathercard.app.MainActivity
+import com.weathercard.app.R
 import com.weathercard.app.WeatherApplication
 import java.time.Instant
 import java.util.Calendar
@@ -95,9 +96,11 @@ private fun WidgetContent(forecast: WidgetForecast?) {
         WidgetArt.background(forecast?.weatherCode, forecast?.isDay ?: true,
             (size.width.value * density).toInt(), (size.height.value * density).toInt(), 22f * density)
     }
+    val spoken = forecast?.let { "${it.placeName}, ${widgetDegrees(it.temperature)}, ${context.getString(it.descriptionRes)}" }
+        ?: context.getString(R.string.app_name)
     Box(
         GlanceModifier.fillMaxSize().clickable(actionStartActivity<MainActivity>())
-            .semantics { contentDescription = forecast?.let { "${it.placeName}, ${widgetDegrees(it.temperature)}, ${it.description}" } ?: "WeatherCard" },
+            .semantics { contentDescription = spoken },
     ) {
         Image(ImageProvider(background), contentDescription = null, contentScale = ContentScale.FillBounds, modifier = GlanceModifier.fillMaxSize())
         when {
@@ -112,8 +115,8 @@ private fun WidgetContent(forecast: WidgetForecast?) {
 private fun EmptyContent() {
     Column(GlanceModifier.fillMaxSize().padding(14.dp), verticalAlignment = Alignment.CenterVertically,
         horizontalAlignment = Alignment.CenterHorizontally) {
-        Text("WeatherCard", style = TextStyle(color = White, fontSize = 14.sp, fontWeight = FontWeight.Bold))
-        Text("Tahmini görmek için uygulamayı aç", maxLines = 2,
+        Text(LocalContext.current.getString(R.string.app_name), style = TextStyle(color = White, fontSize = 14.sp, fontWeight = FontWeight.Bold))
+        Text(LocalContext.current.getString(R.string.widget_empty), maxLines = 2,
             style = TextStyle(color = Muted, fontSize = 11.sp))
     }
 }
@@ -123,7 +126,7 @@ private fun PlaceTitle(forecast: WidgetForecast, density: Float, fontSize: Float
     Row(verticalAlignment = Alignment.CenterVertically) {
         if (forecast.isCurrentLocation) {
             val mark = remember(density) { WidgetArt.locationMark((12 * density).toInt()) }
-            Image(ImageProvider(mark), contentDescription = "Mevcut konum", modifier = GlanceModifier.size(11.dp))
+            Image(ImageProvider(mark), contentDescription = LocalContext.current.getString(R.string.current_location), modifier = GlanceModifier.size(11.dp))
             Spacer(GlanceModifier.width(5.dp))
         }
         Text(forecast.placeName, maxLines = 1, style = TextStyle(color = White, fontSize = fontSize.sp, fontWeight = FontWeight.Bold))
@@ -135,7 +138,7 @@ private fun Glyph(forecast: WidgetForecast, density: Float, sizeDp: Int) {
     val bitmap = remember(forecast.weatherCode, forecast.isDay, density, sizeDp) {
         WidgetArt.glyph(forecast.weatherCode, forecast.isDay, (sizeDp * density).toInt())
     }
-    Image(ImageProvider(bitmap), contentDescription = forecast.description, modifier = GlanceModifier.size(sizeDp.dp))
+    Image(ImageProvider(bitmap), contentDescription = LocalContext.current.getString(forecast.descriptionRes), modifier = GlanceModifier.size(sizeDp.dp))
 }
 
 @Composable
@@ -144,7 +147,7 @@ private fun WideContent(forecast: WidgetForecast, density: Float) {
         Column(GlanceModifier.defaultWeight()) {
             PlaceTitle(forecast, density, 14f)
             Text(widgetDegrees(forecast.temperature), style = TextStyle(color = White, fontSize = 46.sp, fontWeight = FontWeight.Bold))
-            Text(forecast.description, maxLines = 1, style = TextStyle(color = Accent, fontSize = 13.sp, fontWeight = FontWeight.Medium))
+            Text(LocalContext.current.getString(forecast.descriptionRes), maxLines = 1, style = TextStyle(color = Accent, fontSize = 13.sp, fontWeight = FontWeight.Medium))
         }
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Glyph(forecast, density, 64)

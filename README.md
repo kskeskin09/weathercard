@@ -1,90 +1,84 @@
 # WeatherCard
 
-Kotlin ve Jetpack Compose ile geliştirilen Android hava durumu uygulaması.
-Android 8.0 (API 26) ve üzeri cihazları hedefler. Open-Meteo ücretsiz uç noktasını kullanır; API anahtarı ve kart gerektirmez.
+A clean, offline-friendly weather app for Android, built with Kotlin and Jetpack Compose.
+It uses the free [Open-Meteo](https://open-meteo.com/) API, so it needs no account and no API key.
 
-## İlk sürüm
+The app is available in **English** and **Turkish** and follows your phone's system language
+(on Android 13 and later you can also pick a language just for WeatherCard in the system's app settings).
 
-- Güncel saate ait tahmin, önbellekteki tüm saatler için yatay kaydırılabilen sıcaklık eğrisi ve 7 günlük tahmin.
-- Rüzgâr yönü/hızı ve pusula; gün doğumu/batımı saatleri ile güneşin gün içindeki konumunu gösteren eğri.
-- Grafik, rüzgâr ve güneş kartları yuvarlatılmış, yarı saydam yüzeyler kullanır.
-- Uygulamaya gömülü Inter yazı tipi; kalın başlıklar/değerler ve okunabilir küçük metinler. Font çevrimdışı çalışır; SIL Open Font License uygulama paketinde yer alır.
-- Şehir/ilçe araması; yaklaşık konum ve kullanıcının izin vermesi halinde tek seferlik kesin GPS konumu.
-- Referansa yakın mavi/gri tam ekran tema; üstte ortalı konum adı, mevcut konum işareti, büyük merkezî sıcaklık ve hemen altında hava durumu.
-- Sıcaklığın altında yatay saatlik eğri; aşağı kaydırınca solda rüzgâr/güneş, sağda nem/hissedilen/UV/basınç/yağış ayrıntıları.
-- Google konum servisi boş sonuç verdiğinde Android ağ/GPS sağlayıcılarıyla devam etme, güncel kayıtlı konumu kullanma ve açık ayar yönlendirmeleri.
-- Open-Meteo'nun 28 WMO koduna göre özgün vektör ikonlar; gündüz/gece, yağış şiddeti, sis, donan yağış, kar ve dolu ayrımı.
-- Diskte atomik olarak saklanan, koordinat bazında ayrılmış tahmin önbelleği.
-- Çevrimdışıyken kayıtlı tahmini gösterme; başarısız yenilemede verileri koruma.
-- Saatlik/günlük/aylık tahmini API kota kullanımı ve cihazda kalıcı istek sayacı.
+## Features
 
-## Kota sayfası
+- **Big, readable current conditions**: temperature, condition and local time at a glance, on a full-screen sky backdrop that changes with day, night, rain and snow.
+- **Hourly curve**: a horizontally scrollable temperature line that starts at the current hour, with an icon, wind speed and time for every hour.
+- **7-day forecast** with daily highs, lows and conditions.
+- **Details**: wind direction and speed on a compass, sunrise and sunset with the sun's position, humidity, feels-like temperature, UV index, pressure and chance of rain.
+- **Several cities**: search for a city or district, save up to 10, and swipe between them. Your current location (approximate, or a one-time precise GPS fix if you allow it) can be the first page.
+- **Home-screen widget** that shows the selected place from the saved forecast.
+- **Works offline**: forecasts are stored on the device per location and shown even without a connection. A failed refresh never deletes saved data.
+- **Light on the free API**: a normal refresh asks only for the next 6 hours; the full 7 days are downloaded once for a new place or when you choose “Update all”. While the app is on screen it refreshes those 6 hours once per hour, and it never runs in the background.
+- **Quota page** (three-dot menu) that estimates how much of the free Open-Meteo quota this device has used.
+- Original vector icons for all 28 WMO weather codes, with accessible descriptions, and the embedded [Inter](https://rsms.me/inter/) typeface.
 
-Üç nokta menüsündeki **Kota** sayfası bu cihazın gönderdiği istekleri saklar. Tam tahmin 2,3 ve kısmi yenileme 1,4 kota birimi olarak tahmin edilir.
-Önbellekten gösterim 0 birimdir; şehir aramaları ayrıca sayılır. Başarısız/offline istek denemeleri de ihtiyatlı biçimde sayılır.
-Sayaç UTC saat/gün/ay dönemlerini gösterir. Aylık saatlik gruplama ve toplam geçmiş kaydı, uygulama güncellemelerinde korunur.
-Bu, Open-Meteo'nun gerçek kalan kota bilgisi değildir: ücretsiz uç noktanın hesap bazlı kullanım raporu yoktur, diğer cihazlar ve ortak IP/uygulama trafiği bilinemez.
-Sayaç eklenmeden önceki kullanımı geriye dönük hesaplamaz. Uygulama verileri silinirse sayaç da silinir.
+Requires Android 8.0 (API 26) or newer.
 
-## Yenileme sözleşmesi
+## Install
 
-1. Seçilen konumun önbelleği yoksa **bir kez** 7 günlük saatlik + günlük veri indirilir.
-2. Uygulama yeniden açıldığında diskteki kayıt okunur; otomatik tam indirme yapılmaz.
-3. Aşağı çekerek veya **Yenile** ile mevcut saat dahil **toplam 6 saat** istenir. Örneğin 14.35'te 14.00–19.00.
-4. İstek `start_hour` ve `end_hour` kullanır; `daily`, `current` veya `forecast_days` içermez. Altı zaman damgası doğrulanır ve sadece bunlar değiştirilir.
-5. Diğer saatlik veriler, günlük özetler ve tam tahminin indirilme tarihi korunur. Günlük min/maksimumlar kısmi yenilemeden yeniden hesaplanmaz.
-6. Yeni 7 günlük tahmin yalnızca ayrı **Tümünü güncelle** işlemiyle indirilir. Eski veya azalan günlük kapsam ekranda belirtilir; gizli tam yenileme yoktur.
-7. Başka konuma geçilirse o konumun önbelleği kullanılır; ilk kez seçiliyorsa tam veri gerekir.
+1. Open the [latest nightly release](https://github.com/kskeskin09/weathercard/releases/tag/nightly) on your phone.
+2. Download **weathercard-nightly.apk** and open it.
+3. If Android asks, allow your browser to install apps from unknown sources.
 
-Günlük veriyi hiç yenilemeden sürekli 7 gelecek gün göstermek mümkün değildir; bu yüzden tam güncelleme kullanıcıya açık ayrı bir işlemdir.
-Saatlik tahmin, istasyon ölçümü anlamına gelmez. Şehir araması ayrı bir geocoding isteği tüketir.
+Every nightly is signed with the same key, so a newer nightly installs over the existing app and keeps your data.
+Nightly builds are test builds. A stable, versioned release will be published separately.
 
-## Kota
+## Privacy
 
-İlk yükleme 14 saatlik + 9 günlük alan seçer; tek konum/varsayılan model/en fazla 14 gün için yaklaşık **2,3 kota birimi**.
-Kısmi yenileme 14 saatlik alan seçer ve yaklaşık **1,4 birim** tüketir; daha az saat istemek tek başına çağrıyı ücretsiz yapmaz.
-Limitler IP ve uygulama bazlı olduğundan her cihaza bağımsız kota varsayılmaz. Otomatik polling/retry yapılmaz.
+- No account, analytics or ads.
+- Location is used only while the app is open, and only when you ask for it. There is no background tracking.
+- The coordinates of the places you view are sent to Open-Meteo to get the forecast, and city searches go to the Open-Meteo geocoding API. The name of your current location comes from Android's own geocoder when available.
+- Forecasts, saved cities and the usage counter stay in the app's private storage. Cloud backup is turned off.
 
-Ücretsiz Open-Meteo servisi **ticari olmayan kullanım** içindir; reklam/abonelik gibi ticari kullanımda farklı lisans/plan gerekir.
-Veri kaynağı: [Open-Meteo](https://open-meteo.com/), [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
-Uygulama ham tahminlerden görsel özetler üretir. [Koşullar](https://open-meteo.com/en/terms), [API dokümanı](https://open-meteo.com/en/docs).
+## Data source and terms
 
-## Telefona indirme ve nightly sürümleri
+Weather data by [Open-Meteo](https://open-meteo.com/), licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
+WeatherCard turns the raw forecast into its own visual summaries.
 
-[Tek nightly indirme sayfası](https://github.com/kskeskin09/weathercard/releases/tag/nightly).
-Private repoya erişimi olan GitHub hesabınla telefonda giriş yap, **weathercard-nightly.apk** dosyasını indir ve aç.
-Android isterse kullandığın tarayıcı için bilinmeyen kaynaklardan uygulama yükleme izni ver.
-APK'lar aynı imzalama anahtarını kullanır; sonraki nightly sürümleri mevcut uygulamanın üzerine kurulabilir.
+The free Open-Meteo API is for **non-commercial use** only. Commercial use (for example with ads or subscriptions) needs a paid Open-Meteo plan. See their [terms](https://open-meteo.com/en/terms), [pricing](https://open-meteo.com/en/pricing) and [API documentation](https://open-meteo.com/en/docs).
+The free limits are shared per IP address and are not guaranteed per device, so the quota page is only an estimate.
 
-Her `main` push'u test/derleme yapıp imzalı aday APK üretir; **otomatik release yayımlamaz**. Önce gerçek ekran görüntüleri kullanıcıya gösterilir. Kullanıcı onayından sonra workflow elle `publish_nightly=true` ile çalıştırılır ve aynı `nightly` prerelease ile iki sabit dosya güncellenir.
-Her commit için yeni release oluşturulmaz. Nightly yalnızca **deneme sürümleri** içindir; kullanıcı bir sürümü onayladığında ayrıca SemVer etiketli ana/stable release hazırlanır. Stable release otomatik yayımlanmaz. Otomatik gece takvimi tanımlı değildir.
-Kullanıcı doğrudan nightly istediğinde `publish-nightly.yml`, başarılı kontrol koşusunun imzalı aday APK'sını yeniden derlemeden yayımlar. Böylece görsel üretiminden sonra ikinci bir Android derlemesi gerekmez.
-Sürüm adı `0.1.0-nightly.YYYYMMDD.N`, Android sürüm kodu `100000 + GITHUB_RUN_NUMBER` şeklindedir.
-Taban SemVer sürümü `gradle.properties` içindedir; sürüm adı uygulamanın alt kısmında da gösterilir.
+### How the app uses the quota
 
-Derleme, test, lint, imza doğrulaması ve yayınlama **GitHub Actions** içinde yapılır.
-İmzalama anahtarı/parolası `ANDROID_KEYSTORE_BASE64` ve `ANDROID_SIGNING_PASSWORD` GitHub Secrets alanındadır; kodda tutulmaz.
-PR'lar ve push'lar test edilir ancak nightly yayımlamaz. Yayın için görsel onayı ve elle başlatılan yayın seçeneği gerekir.
-UI smoke testi ayrı workflow ile Android emülatöründe çalıştırılır; ikon ve ekran görüntülerini artifact olarak saklar.
+1. A place without a saved forecast downloads 7 days of hourly and daily data **once** (about 2.3 quota units).
+2. Opening the app again reads the saved forecast from disk. It never starts a full download on its own.
+3. Pull to refresh, **Refresh**, and the hourly automatic refresh ask only for the current hour plus the next 5 (about 1.4 units). For example, at 14:35 it fetches 14:00 to 19:00 and replaces only those hours.
+4. A new 7-day forecast is downloaded only when you pick **Update all**. When the daily data gets old, the app tells you.
+5. City searches use a separate geocoding endpoint. Showing cached data costs nothing.
 
-## Geliştirme
+There is no automatic polling or retry; after an error the app keeps the saved forecast and waits for the next hour.
 
-Android Studio ile kök klasörü düzenleyebilirsin. Derleme araçları GitHub Actions üzerinde JDK 17, Android SDK 35 ve Gradle Wrapper 8.11.1 olarak sabitlenmiştir.
-Derlemeler, testler ve APK üretimi yerelde çalıştırılmaz.
+## Building
+
+All builds, tests, lint and APK signing run on **GitHub Actions**; there is no need to build locally.
+
+- `android.yml` runs on every push and pull request: unit tests, Android lint and a release build. On `main` it also produces a signed candidate APK, but it does not publish anything automatically.
+- `ui-smoke.yml` (manual) runs the UI tests on an Android emulator and saves screenshots as artifacts.
+- `publish-nightly.yml` (manual) publishes an already tested, signed APK from a successful `main` run to the single `nightly` release without rebuilding it.
 
 ```sh
 gh workflow run android.yml --ref main --repo kskeskin09/weathercard
 gh workflow run ui-smoke.yml --ref main --repo kskeskin09/weathercard
 ```
 
-Telefona kurulacak çıktı nightly sayfasındaki imzalı release APK'sıdır.
+The toolchain is pinned to JDK 17, Android SDK 35 and Gradle 8.11.1. You can still open the project in Android Studio to read or edit the code.
+The signing key and its password are stored only as GitHub Secrets and are never committed to the repository. Pull requests are built without signing.
 
-## Yapı
+Version names look like `0.1.0-nightly.YYYYMMDD.N`; the base version lives in `gradle.properties` and is shown at the bottom of the main screen.
 
-- `core`: platformdan bağımsız modeller, 6 saatlik birleştirme, testler, WMO eşlemesi.
-- `app`: Open-Meteo bağlantısı, atomik disk kaydı, konum, şehir arama ve Compose ekranları/vektör ikonlar.
+## Project structure
 
-Mevcut konumun mahalle/ilçe adı Android'in isteğe bağlı ters geocoding servisiyle bulunur. Servis yoksa veya sonuç vermezse hava durumu yüklenir ve “Mevcut konum” etiketi kullanılır. Bu işlem Open-Meteo tahmin kotasını tüketmez.
-Google Play Services bulunmayan cihazlarda Android konum sağlayıcıları kullanılır. GPS için kesin konum izni ve açık cihaz konumu gerekir; konum elde edilemezse şehir araması kullanılabilir.
-Konum ve önbellek uygulamanın özel alanında saklanır; hesap/analitik/reklam SDK'sı yoktur.
-Hava durumu isteklerinde koordinat Open-Meteo'ya iletilir. Bulut yedeği devre dışıdır.
+- `core`: platform-independent models, the WMO condition mapping, the 6-hour merge logic, saved cities and the usage tracker, with unit tests.
+- `app`: the Open-Meteo client, the on-disk cache, location, the Compose screens, vector icons and the home-screen widget.
+- `app/src/main/res/values/` holds the English text (the default) and `values-tr/` the Turkish translation. A new language is a new `values-xx/strings.xml`.
+
+## License
+
+The Inter font is bundled under the SIL Open Font License (`app/src/main/assets/fonts/Inter-OFL.txt`).

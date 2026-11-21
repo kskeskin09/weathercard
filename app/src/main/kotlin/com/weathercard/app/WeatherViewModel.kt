@@ -33,13 +33,13 @@ data class WeatherUiState(
     /** Cache keys whose saved forecast is being opened. */
     val opening: Set<String> = emptySet(),
     val busy: Boolean = false,
-    val message: String? = null,
+    val message: UiText? = null,
     val searchResults: List<Place> = emptyList(),
     val searching: Boolean = false,
-    val searchMessage: String? = null,
+    val searchMessage: UiText? = null,
     val usage: UsageSummary? = null,
-    val usageError: String? = null,
-    val status: String? = null,
+    val usageError: UiText? = null,
+    val status: UiText? = null,
 ) {
     val places: List<Place> get() = saved.places
     val page: Int get() = saved.selected
@@ -87,7 +87,7 @@ class WeatherViewModel(application: Application) : AndroidViewModel(application)
                 mutableState.update { it.copy(snapshots = it.snapshots + (key to snapshot)) }
             } catch (error: CancellationException) { throw error }
             catch (error: Exception) {
-                if (selected.cacheKey == key) mutableState.update { it.copy(message = error.message ?: "Bağlantı kurulamadı. Kayıtlı veriler korunuyor.") }
+                if (selected.cacheKey == key) mutableState.update { it.copy(message = error.toUiText()) }
             } finally { mutableState.update { it.copy(opening = it.opening - key) } }
         }
     }
@@ -97,7 +97,7 @@ class WeatherViewModel(application: Application) : AndroidViewModel(application)
         val existing = mutableState.value.saved.indexOf(place)
         if (existing >= 0) { selectPage(existing); return }
         if (!mutableState.value.saved.canAdd) {
-            mutableState.update { it.copy(message = "En fazla ${SavedPlaces.MAX} şehir kaydedebilirsin. Önce bir şehri kaldır.") }
+            mutableState.update { it.copy(message = UiText(R.string.error_city_limit, listOf(SavedPlaces.MAX))) }
             return
         }
         runWeather(place) { app.repository.open(place) }
@@ -146,7 +146,7 @@ class WeatherViewModel(application: Application) : AndroidViewModel(application)
                 val usage = app.usage.summary()
                 mutableState.update { it.copy(usage = usage, usageError = null) }
             } catch (error: CancellationException) { throw error }
-            catch (_: Exception) { mutableState.update { it.copy(usageError = "Kullanım kaydı okunamadı.") } }
+            catch (_: Exception) { mutableState.update { it.copy(usageError = UiText(R.string.usage_read_failed)) } }
         }
     }
 
@@ -154,7 +154,7 @@ class WeatherViewModel(application: Application) : AndroidViewModel(application)
      * Runs one network action for the selected page, or for [adding] which becomes a page only after
      * its forecast loaded, so a failed search result never leaves an empty page behind.
      */
-    private fun runWeather(adding: Place? = null, status: String? = null, current: Boolean = false, action: suspend () -> WeatherSnapshot) {
+    private fun runWeather(adding: Place? = null, status: UiText? = null, current: Boolean = false, action: suspend () -> WeatherSnapshot) {
         if (mutableState.value.busy) return
         mutableState.update { it.copy(busy = true, message = null, status = status) }
         viewModelScope.launch {
@@ -173,7 +173,7 @@ class WeatherViewModel(application: Application) : AndroidViewModel(application)
             }
             catch (error: CancellationException) { throw error }
             catch (error: Exception) {
-                mutableState.update { it.copy(busy = false, status = null, message = error.message ?: "Bağlantı kurulamadı. Kayıtlı veriler korunuyor.") }
+                mutableState.update { it.copy(busy = false, status = null, message = error.toUiText()) }
             }
         }
     }
@@ -191,21 +191,21 @@ class WeatherViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch {
             try {
                 val results = app.api.searchPlaces(query)
-                mutableState.update { it.copy(searching = false, searchResults = results, searchMessage = if (results.isEmpty()) "Şehir bulunamadı." else null) }
+                mutableState.update { it.copy(searching = false, searchResults = results, searchMessage = if (results.isEmpty()) UiText(R.string.search_none) else null) }
             } catch (error: CancellationException) { throw error }
-            catch (_: Exception) { mutableState.update { it.copy(searching = false, searchMessage = "Şehir araması başarısız. Tekrar dene.") } }
+            catch (_: Exception) { mutableState.update { it.copy(searching = false, searchMessage = UiText(R.string.search_failed)) } }
         }
     }
 
     fun permissionDenied() {
-        mutableState.update { it.copy(message = "Konum izni verilmedi. Şehir seçerek devam edebilirsin.") }
+        mutableState.update { it.copy(message = UiText(R.string.location_denied, locationHelp = true)) }
     }
 
     fun useLocation() {
         if (ContextCompat.checkSelfPermission(app, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             permissionDenied(); return
         }
-        runWeather(status = "Konum bulunuyor…", current = true) {
+        runWeather(status = UiText(R.string.locating), current = true) {
             val place = DeviceLocationProvider(app).locate().copy(isCurrentLocation = true)
             app.repository.open(place).copy(place = place)
         }

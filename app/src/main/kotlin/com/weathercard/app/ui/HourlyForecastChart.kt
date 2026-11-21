@@ -27,6 +27,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.stringResource
+import com.weathercard.app.R
 import com.weathercard.core.HourWeather
 import com.weathercard.core.WeatherCondition
 import java.time.Instant
@@ -48,9 +50,9 @@ fun HourlyForecastChart(hours: List<HourWeather>, currentHour: Long, zone: ZoneI
     val center = (high + low) / 2
     fun y(index: Int): Float = (64 - (((ordered[index.coerceIn(0, ordered.lastIndex)].temperature ?: center) - center) / range) * 58).toFloat()
     val scroll = rememberLazyListState()
-    // When the clock passes an hour the old first column disappears; keep "Şimdi" at the left edge.
+    // When the clock passes an hour the old first column disappears; keep "Now" at the left edge.
     LaunchedEffect(currentHour) { scroll.scrollToItem(0) }
-    val locale = Locale.forLanguageTag("tr-TR")
+    val locale = Locale.getDefault()
     LazyRow(
         state = scroll,
         modifier = modifier.fillMaxWidth().clip(RoundedCornerShape(28.dp))
@@ -61,12 +63,13 @@ fun HourlyForecastChart(hours: List<HourWeather>, currentHour: Long, zone: ZoneI
         itemsIndexed(ordered, key = { _, hour -> hour.time }) { index, hour ->
             val current = hour.time == currentHour
             val local = Instant.ofEpochSecond(hour.time).atZone(zone)
-            val label = if (current) "Şimdi" else local.format(DateTimeFormatter.ofPattern("HH:mm"))
+            val label = if (current) stringResource(R.string.now) else local.format(DateTimeFormatter.ofPattern("HH:mm"))
             val temperature = hour.temperature?.roundToInt()?.let { "$it°" } ?: "—°"
             val wind = hour.windSpeed?.let { String.format(locale, "%.1f", it) } ?: "—"
-            val description = WeatherCondition.from(hour.weatherCode, hour.isDay ?: true).description
+            val description = stringResource(WeatherCondition.from(hour.weatherCode, hour.isDay ?: true).kind.labelRes)
+            val spoken = stringResource(R.string.hour_description, label, local.toLocalDate(), temperature, description, wind)
             Column(Modifier.width(96.dp).semantics(mergeDescendants = true) {
-                contentDescription = "$label, ${local.toLocalDate()}, $temperature, $description, rüzgâr $wind kilometre/saat"
+                contentDescription = spoken
             }, horizontalAlignment = Alignment.CenterHorizontally) {
                 Box(Modifier.fillMaxWidth().height(100.dp)) {
                     Canvas(Modifier.fillMaxSize().clipToBounds()) {
@@ -109,7 +112,7 @@ fun HourlyForecastChart(hours: List<HourWeather>, currentHour: Long, zone: ZoneI
                 }
                 WeatherGlyph(hour.weatherCode, hour.isDay ?: true, Modifier.size(48.dp))
                 Text(wind, color = Color(0xFFD0E0EF), fontSize = 13.sp, lineHeight = 17.sp, modifier = Modifier.padding(top = 3.dp))
-                Text("km/sa", color = Color(0xFFABC5DC), fontSize = 9.sp, lineHeight = 12.sp)
+                Text(stringResource(R.string.wind_unit), color = Color(0xFFABC5DC), fontSize = 9.sp, lineHeight = 12.sp)
                 Text(label, color = if (current) Color.White else Color(0xFFC0D3E5), fontSize = 14.sp, lineHeight = 18.sp, fontWeight = if (current) FontWeight.SemiBold else FontWeight.Normal, modifier = Modifier.padding(top = 9.dp))
                 Text(local.format(DateTimeFormatter.ofPattern("d MMM", locale)), color = Color(0xFF9DB8D2), fontSize = 9.sp, lineHeight = 12.sp, modifier = Modifier.padding(top = 3.dp, bottom = 5.dp))
             }
