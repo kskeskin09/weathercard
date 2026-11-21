@@ -116,6 +116,12 @@ class WeatherUiSmokeTest {
         }
     }
 
+    /** Prefetched neighbour pages may exist without being placed; only placed pages count. */
+    private fun pagerSettled(): Boolean {
+        val placed = compose.onAllNodesWithTag("forecast-list").fetchSemanticsNodes().filter { it.layoutInfo.isPlaced }
+        return placed.size == 1 && kotlin.math.abs(placed[0].boundsInRoot.left) < 1f
+    }
+
     private fun screenshot(app: WeatherApplication, name: String) {
         val target = File(app.getExternalFilesDir("screenshots"), name)
         var lastError: ComposeTimeoutException? = null
@@ -164,7 +170,7 @@ class WeatherUiSmokeTest {
             compose.onNodeWithTag("city-pager").performTouchInput { swipeLeft() }
             compose.waitUntil(10_000) { compose.onAllNodesWithText("Ankara").fetchSemanticsNodes().isNotEmpty() }
             compose.waitUntil(10_000) { compose.onAllNodesWithText("7°").fetchSemanticsNodes().isNotEmpty() }
-            compose.waitUntil(5_000) { compose.onAllNodesWithTag("forecast-list").fetchSemanticsNodes().size == 1 }
+            compose.waitUntil(5_000) { pagerSettled() }
             compose.onAllNodesWithText("7°").onFirst().assertIsDisplayed()
             compose.onNodeWithContentDescription(app.getString(R.string.city_pages, 2, 3)).assertIsDisplayed()
             screenshot(app, "cities-second.png")
@@ -177,8 +183,8 @@ class WeatherUiSmokeTest {
                 up()
             }
             compose.waitUntil(10_000) { compose.onAllNodesWithText("İstanbul").fetchSemanticsNodes().isNotEmpty() }
-            // Only one page is laid out once the pager has settled on a whole page.
-            compose.waitUntil(5_000) { compose.onAllNodesWithTag("forecast-list").fetchSemanticsNodes().size == 1 }
+            // Exactly one city page is placed, edge to edge, once the pager has settled on a whole page.
+            compose.waitUntil(5_000) { pagerSettled() }
             compose.waitUntil(10_000) { compose.onAllNodesWithText("18°").fetchSemanticsNodes().isNotEmpty() }
             screenshot(app, "cities-chart-swipe.png")
         }
