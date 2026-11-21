@@ -7,14 +7,21 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.weathercard.app.data.DeviceLocationProvider
+import com.weathercard.app.widget.WeatherWidget
 import com.weathercard.core.Place
 import com.weathercard.core.WeatherSnapshot
 import com.weathercard.core.UsageSummary
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.time.Duration
+import java.time.Instant
+import java.time.ZoneId
+import java.time.temporal.ChronoUnit
 
 data class WeatherUiState(
     val snapshot: WeatherSnapshot? = null,
@@ -53,6 +60,27 @@ class WeatherViewModel(application: Application) : AndroidViewModel(application)
     fun refresh() = runWeather { app.repository.refreshSixHours(selected) }
     fun reloadAll() = runWeather { app.repository.reloadAll(selected) }
 
+    /**
+     * Runs only while the screen is visible (the caller ties it to the lifecycle), so there is no
+     * background work. Each clock hour gets at most one normal six-hour refresh; a failure keeps the
+     * cache and simply waits for the next hour instead of retrying or falling back to a full reload.
+     */
+    suspend fun refreshEveryHourWhileVisible() {
+        while (true) {
+            val settled = state.first { !it.busy }
+            val snapshot = settled.snapshot
+            val zone = snapshot?.timezone?.let(ZoneId::of) ?: ZoneId.systemDefault()
+            val now = Instant.now()
+            val hourStart = now.atZone(zone).truncatedTo(ChronoUnit.HOURS).toInstant()
+            if (snapshot != null && Instant.ofEpochSecond(snapshot.sixHoursFetchedAt ?: snapshot.fullFetchedAt).isBefore(hourStart)) {
+                refresh()
+            }
+            // A couple of seconds past the boundary so the new hour is already the window's first hour.
+            val next = hourStart.plus(1, ChronoUnit.HOURS).plusSeconds(2)
+            delay(Duration.between(Instant.now(), next).toMillis().coerceAtLeast(1_000))
+        }
+    }
+
     fun loadUsage() {
         viewModelScope.launch {
             try {
@@ -70,12 +98,20 @@ class WeatherViewModel(application: Application) : AndroidViewModel(application)
             try {
                 val snapshot = action()
                 mutableState.update { it.copy(snapshot = snapshot, busy = false, status = null) }
+                refreshWidget()
             }
             catch (error: CancellationException) { throw error }
             catch (error: Exception) {
                 mutableState.update { it.copy(busy = false, status = null, message = error.message ?: "Bağlantı kurulamadı. Kayıtlı veriler korunuyor.") }
             }
         }
+    }
+
+    /** The widget only reads the disk cache, so redraw it whenever the app saved new data. */
+    private suspend fun refreshWidget() {
+        try { WeatherWidget.refresh(app) }
+        catch (error: CancellationException) { throw error }
+        catch (_: Exception) { }
     }
 
     fun search(query: String) {
